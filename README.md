@@ -1,185 +1,172 @@
 # capit
 
-capit is a command line tool that issues authentication keys based on a master key with a spending cap.
+**Cap spending on your API keys. One command.**
 
-It is intended to be an alternative to more complicated secrets management platforms such as vault, doppler and nordpass for use-cases where you have a credit card hooked up to an account and don't necessarily trust what you're feeding your api keys into.
+```bash
+$ capit openrouter 1.00
+sk-or-v1-64bfb358fa0a...
+```
 
-It's a locally run solution and there's nobody trying to make money behind it. No signup, nothing like that.
+That's it. You now have an API key with a $1/month spending cap enforced by OpenRouter.
 
 ## Quick Start
 
-```shell
-$ capit openrouter 1.00
-sk-or-v1-...
-```
-
-## Installation
+### Issue a limited key
 
 ```bash
-# Clone or download this repository
-cd limitspend
+# Install
+pip install capit
 
-# Install with pip
-pip install -e .
-
-# Or use a virtual environment
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .
+# Issue a key with $1/month cap
+capit openrouter 1.00
 ```
 
-## Usage
+### First time? No setup needed
 
-### Key Issuance (Primary Workflow)
-
-The main use case - issue a limited key with a spending cap:
-
-```shell
-$ capit <platform> <spend_cap>
-$ capit openrouter 1.00
-sk-or-v1-...
+```bash
+$ capit openrouter 5.00 -i
+No master key found for 'openrouter'.
+Enter your management API key (won't be stored):
+Key: sk-or-v1-management-key...
+sk-or-v1-limited-key-...
 ```
 
-### Administration Commands
+The `-i` flag prompts for your management key without storing it. Perfect for trying it out.
 
-All administration commands use `--` prefix for clean separation from key issuance.
+### Send directly to your AI agent
 
-**List platforms:**
-```shell
-$ capit --platforms
-example
-openrouter
+```bash
+# Claude
+capit openrouter 1.00 --send-to claude
+
+# Cursor IDE
+capit openrouter 1.00 --send-to cursor
+
+# Windsurf
+capit openrouter 1.00 --send-to windsurf
 ```
 
-**List stores:**
-```shell
-$ capit --stores
-dotenv
+## The Problem
+
+You want to use AI agents (Claude Code, Cursor, etc.) but you don't want to give them unlimited access to your credit card. Traditional secrets management is overkill.
+
+## The Solution
+
+capit creates **limited API keys** with spending caps enforced by the provider:
+
+1. You run `capit openrouter 5.00`
+2. capit calls OpenRouter's API to create a guardrail with $5/month limit
+3. capit creates an API key with that guardrail attached
+4. You give the limited key to your agent
+
+If the agent goes rogue, it can only spend $5.
+
+## Consumers
+
+"Consumers" are AI agents and tools that use API keys. capit can send keys directly to them:
+
+| Consumer | Command |
+|----------|---------|
+| Claude / Claude Code | `capit openrouter 1.00 --send-to claude` |
+| Cursor IDE | `capit openrouter 1.00 --send-to cursor` |
+| Windsurf | `capit openrouter 1.00 --send-to windsurf` |
+
+### Create your own consumer
+
+Add a handler in your script:
+
+```python
+def send_to_mytool(key, platform, spend_cap):
+    print(f"export API_KEY={key}")
+    # Or write to a config file, or call an API, etc.
 ```
 
-**Manage master keys:**
-```shell
-# Add a key
-$ capit --keys add openrouter
-Store: dotenv
-Add key:
-Key: sk-or-v1-your-actual-key-here
-Key added
+## Administration
 
-# List keys
-$ capit --keys list
-openrouter | dotenv
+All admin commands use `--` prefix (Unix style):
 
-# Remove a key
-$ capit --keys remove openrouter
-Success
-```
+```bash
+# List your stored master keys
+capit --keys list
 
-**Enable/disable platforms:**
-```shell
-$ capit --disable openrouter
-Platform 'openrouter' disabled
+# Add a master key (stored locally)
+capit --keys add openrouter
 
-$ capit --enable openrouter
-Platform 'openrouter' enabled
+# List actual API keys created on OpenRouter
+capit --keys list -r openrouter
+
+# Revoke an API key
+capit --keys delete openrouter <key-id>
+
+# Remove a stored master key
+capit --keys remove openrouter
+
+# List platforms
+capit --platforms
+
+# List storage backends
+capit --stores
 ```
 
 ## Platforms
 
-### OpenRouter
+Platforms define how to create limited keys for a service:
 
-capit integrates with [OpenRouter](https://openrouter.ai) to create real limited API keys with spending caps.
-
-When you issue a key for OpenRouter, capit:
-1. Creates a **guardrail** on OpenRouter with your specified budget limit
-2. Creates a new **API key** with that guardrail assigned
-3. Returns the limited key
-
-This means the spending cap is **enforced by OpenRouter**, not just locally generated.
-
-**Requirements:**
-- A Management API key from [openrouter.ai/settings/management-keys](https://openrouter.ai/settings/management-keys)
-- The key must have permissions to create API keys and guardrails
-
-**Example:**
-```shell
-# Add your OpenRouter management key
-$ capit --keys add openrouter
-Store: dotenv
-Add key:
-Key: sk-or-v1-management-key-...
-Key added
-
-# Issue a limited key with $5/month cap
-$ capit openrouter 5.00
-sk-or-v1-limited-key-...
+```bash
+capit --platforms
+# example
+# openrouter
 ```
 
-The returned key will have a $5/month spending limit enforced by OpenRouter.
+### Adding a platform
 
-### Adding New Platforms
+See [new-platform.md](new-platform.md) for the full guide. Quick example:
 
-capit is user-modifiable. See [new-platform.md](new-platform.md) for adding new platforms.
+```python
+# capit/platforms/anthropic.py
+PLATFORM_NAME = "anthropic"
+PLATFORM_URL = "https://anthropic.com"
+API_BASE = "https://api.anthropic.com/v1"
 
-Platform code is auditable, locally run code. Template available at `capit/platforms/example.py`.
-
-```shell
-$ capit --platforms
-example
-openrouter
+def create_limited_key(master_key, spend_cap, salt, name=None, prefix=None):
+    # Call Anthropic API to create limited key
+    ...
 ```
 
-## Storage (Stores)
+## Storage
 
-The storage platform for your reference keys (the ones with the ability to create limit keys) is also user-modifiable and modular. This means you can gate things behind say, a yubi-key before they are issued, or you can just be lazy.
+Master keys are stored locally in `$HOME/.local/capit/`:
+- `secrets.txt` - Your master keys (dotenv format)
+- `master-lookup` - Maps platforms to storage backends
 
-```shell
-$ capit --stores
-dotenv
+You can implement custom storage backends (e.g., YubiKey-gated, encrypted, etc.). See `capit/stores/dotenv.py` for the interface.
+
+## One-shot / Ephemeral Mode
+
+Don't want to store anything? Use `-i` to enter your key once:
+
+```bash
+capit openrouter 1.00 -i
 ```
 
-Will list the store methods, the default being a `.env` style format called `secrets.txt` in `$HOME/.local/capit`.
+The key is used to create the limited key, then discarded. Next time you'll be prompted again.
 
-You can find how these are implemented in `capit/stores/` - it's two functions, `store_key` and `retrieve_key`, not too hard. This follows the same pattern as the platforms.
+## For Agent Authors
 
-### Adding a New Master Key
+If you're building an AI agent, integrate capit:
 
-It will add a key in the way you specify and then also put an entry into `$HOME/.local/capit/master-lookup` that tells what kind of store the platform is using so:
-1. It can be restored in the future
-2. You can have different store technologies for different master keys
-3. Changing the default store doesn't blow away all your previously added keys
-
-```shell
-$ capit --keys add openrouter
-Store: dotenv
-Add key:
-Key: [your-key]
-Key added
+```bash
+# In your setup script
+LIMITED_KEY=$(capit openrouter 5.00 -s claude)
+export OPENROUTER_API_KEY=$LIMITED_KEY
 ```
 
-## Directory Structure
+Or let users cap spending for your agent:
 
+```bash
+# User runs your agent with spending cap
+capit openrouter 10.00 --send-to my-agent
 ```
-limitspend/
-├── pyproject.toml         # Package configuration
-├── README.md              # This file
-├── new-platform.md        # Guide for adding new platforms
-└── capit/                 # Main package
-    ├── __init__.py        # CLI implementation
-    ├── platforms/         # Platform implementations
-    │   ├── __init__.py
-    │   ├── openrouter.py  # OpenRouter with real API integration
-    │   └── example.py     # Template for new platforms
-    └── stores/            # Storage backend implementations
-        ├── __init__.py
-        └── dotenv.py      # Default text-file store
-```
-
-## Configuration
-
-capit stores configuration in `$HOME/.local/capit/`:
-- `secrets.txt` - Master keys (dotenv format)
-- `master-lookup` - JSON mapping of platforms to stores
 
 ## License
 
