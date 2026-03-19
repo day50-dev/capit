@@ -503,10 +503,12 @@ def disable_cmd(platform):
 def cli():
     """Main entry point."""
     # Check for -- prefixed admin commands
-    if len(sys.argv) > 1 and sys.argv[1].startswith("--"):
-        admin()
-    else:
-        main()
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg in ("--keys", "--platforms", "--stores", "--enable", "--disable"):
+            admin()
+            return
+    main()
 
 
 if __name__ == "__main__":
