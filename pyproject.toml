@@ -40,7 +40,7 @@ dev = [
 ]
 
 [project.scripts]
-capit = "capit:main"
+capit = "capit:cli"
 
 [project.urls]
 Homepage = "https://github.com/capit/capit"
