@@ -38,9 +38,6 @@ def send(key: str, platform: str, spend_cap: str) -> str:
     with open(settings_path, "w") as f:
         json.dump(settings, f, indent=2)
     
-    click.echo(f"\n🔑 Generated limited key for {platform} (${spend_cap} cap)", err=True)
-    click.echo(f"Key: {key}", err=True)
-    click.echo(f"\n✅ Configured in {settings_path}", err=True)
-    click.echo(f"\nRestart Cursor for changes to take effect.", err=True)
+    click.echo(f"${spend_cap} {platform} key installed into cursor")
     
     return key

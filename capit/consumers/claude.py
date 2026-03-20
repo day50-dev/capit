@@ -38,7 +38,6 @@ def send(key: str, platform: str, spend_cap: str) -> str:
         creds = {}
     
     # Update API key
-    # Claude Code uses 'api_key' for OpenRouter-compatible APIs
     creds["api_key"] = key
     
     # Write back with secure permissions
@@ -48,10 +47,6 @@ def send(key: str, platform: str, spend_cap: str) -> str:
     # Set secure file permissions (owner read/write only)
     creds_path.chmod(0o600)
     
-    click.echo(f"\n🔑 Generated limited key for {platform} (${spend_cap} cap)", err=True)
-    click.echo(f"Key: {key}", err=True)
-    click.echo(f"\n✅ Configured in {creds_path}", err=True)
-    click.echo(f"\nStart Claude Code:", err=True)
-    click.echo(f"  claude", err=True)
+    click.echo(f"${spend_cap} {platform} key installed into claude")
     
     return key

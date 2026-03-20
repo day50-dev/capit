@@ -1,10 +1,11 @@
 <p align="center">
 <img width="500" height="187" alt="capit_500" src="https://github.com/user-attachments/assets/db22c959-ffee-4540-9108-2928e9c73f70" />
+<a href=https://pypi.org/project/capit><img src=https://badge.fury.io/py/capit.svg/></a>
 <br/><strong>Buget per-agent, per-provider, as little or as much as you want</strong>
 </p>
 
 ```bash
-$ capit openrouter 5.00 --agent openclaw
+$ uvx capit openrouter 5.00 --agent openclaw
 $5.00 openrouter key installed into openclaw
 ```
 
