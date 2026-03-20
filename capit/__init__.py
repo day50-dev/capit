@@ -208,54 +208,51 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
     return limited_key
 
 
-def handle_send_to(consumer, key, platform, spend_cap):
-    """Send the generated key to a consumer (e.g., claude-code)."""
-    consumer_handlers = {
-        "claude": send_to_claude,
-        "claude-code": send_to_claude,
-        "cursor": send_to_cursor,
-        "windsurf": send_to_windsurf,
-    }
+CONSUMERS_DIR = SCRIPT_DIR / "consumers"
+
+
+def list_consumers():
+    """List all available consumers."""
+    consumers = []
+    if CONSUMERS_DIR.exists():
+        for f in CONSUMERS_DIR.glob("*.py"):
+            if f.name != "__init__.py" and not f.name.endswith(".disabled"):
+                consumers.append(f.stem)
+    return consumers
+
+
+def get_consumer_module(consumer_name):
+    """Dynamically load a consumer module."""
+    consumer_file = CONSUMERS_DIR / f"{consumer_name}.py"
+    if not consumer_file.exists():
+        return None
     
-    handler = consumer_handlers.get(consumer.lower())
-    if not handler:
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(consumer_name, consumer_file)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def handle_send_to(consumer, key, platform, spend_cap):
+    """Send the generated key to a consumer."""
+    # Try to load consumer module dynamically
+    consumer_module = get_consumer_module(consumer)
+    
+    if not consumer_module:
+        available = list_consumers()
         raise click.ClickException(
             f"Unknown consumer '{consumer}'.\n"
-            f"Supported consumers: {', '.join(consumer_handlers.keys())}"
+            f"Supported consumers: {', '.join(available) if available else 'none (add one to capit/consumers/)'}"
         )
     
-    return handler(key, platform, spend_cap)
-
-
-def send_to_claude(key, platform, spend_cap):
-    """Send key to Claude by setting environment variable and providing instructions."""
-    click.echo(f"\n🔑 Generated limited key for {platform} (${spend_cap} cap)", err=True)
-    click.echo(f"Key: {key}", err=True)
-    click.echo(f"\nTo use with Claude, run:", err=True)
-    click.echo(f"  export OPENROUTER_API_KEY={key}", err=True)
-    click.echo(f"\nOr pipe to claude-code:", err=True)
-    click.echo(f"  OPENROUTER_API_KEY={key} claude", err=True)
-    return key
-
-
-def send_to_cursor(key, platform, spend_cap):
-    """Send key to Cursor IDE."""
-    click.echo(f"\n🔑 Generated limited key for {platform} (${spend_cap} cap)", err=True)
-    click.echo(f"Key: {key}", err=True)
-    click.echo(f"\nTo use with Cursor:", err=True)
-    click.echo(f"  1. Open Cursor Settings > AI > API Keys", err=True)
-    click.echo(f"  2. Add this key to OpenRouter", err=True)
-    return key
-
-
-def send_to_windsurf(key, platform, spend_cap):
-    """Send key to Windsurf IDE."""
-    click.echo(f"\n🔑 Generated limited key for {platform} (${spend_cap} cap)", err=True)
-    click.echo(f"Key: {key}", err=True)
-    click.echo(f"\nTo use with Windsurf:", err=True)
-    click.echo(f"  1. Open Windsurf Settings > AI", err=True)
-    click.echo(f"  2. Add this key to OpenRouter", err=True)
-    return key
+    if not hasattr(consumer_module, 'send'):
+        raise click.ClickException(
+            f"Consumer '{consumer}' is missing a 'send' function.\n"
+            f"See capit/consumers/example.py for the required interface."
+        )
+    
+    return consumer_module.send(key, platform, spend_cap)
 
 
 # =============================================================================
@@ -265,42 +262,68 @@ def send_to_windsurf(key, platform, spend_cap):
 @click.command(context_settings=dict(
     ignore_unknown_options=False,
     allow_extra_args=False,
+    help_option_names=['--help', '-h']
 ))
-@click.argument("platform")
-@click.argument("spend_cap")
+@click.argument("platform", required=False)
+@click.argument("spend_cap", required=False)
 @click.option("--name", "-n", help="Name for the created key")
 @click.option("--prefix", "-p", help="Prefix for key organization")
-@click.option("--send-to", "-s", help="Send key to consumer (claude, cursor, windsurf)")
+@click.option("--agent", "-a", metavar="AGENT", help="Send key to AI agent (claude, cursor, windsurf)")
 @click.option("--interactive", "-i", is_flag=True, help="Prompt for master key if not found")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 @click.version_option(version="0.2.0")
-def main(platform, spend_cap, name, prefix, send_to, interactive, verbose):
-    """capit - Issue authentication keys with spending caps.
-    
-    Issue a limited key:
-        capit openrouter 1.00
-        capit openrouter 5.00 --name production --prefix prod
-        capit openrouter 1.00 --send-to claude
-        capit openrouter 1.00 -i  # Prompt for key if not found
-    
-    Administration:
-        capit --keys list           List master keys
-        capit --keys remote openrouter  List API keys from platform  
-        capit --keys delete openrouter <id>  Revoke an API key
-        capit --keys add openrouter  Add a master key
-        capit --keys remove openrouter  Remove a master key
-        capit --platforms           List available platforms
-        capit --stores              List available stores
-    """
+@click.pass_context
+def main(ctx, platform, spend_cap, name, prefix, agent, interactive, verbose):
+    """capit - Cap spending on your AI agents.
+
+\b
+Issue a limited key:
+  capit openrouter 1.00
+  capit openrouter 5.00 --name production --prefix prod
+  capit openrouter 1.00 --agent claude
+  capit openrouter 1.00 -i
+
+\b
+Administration:
+  capit --keys list                 List master keys
+  capit --keys list -r openrouter   List API keys from platform
+  capit --keys delete openrouter    Revoke an API key
+  capit --keys add openrouter       Add a master key
+  capit --keys remove openrouter    Remove a master key
+  capit --platforms                 List available platforms
+  capit --stores                    List available stores
+  capit --consumers                 List available consumers
+"""
+    # Check for help flag explicitly
+    if '--help' in sys.argv or '-h' in sys.argv:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
+    # Show help if no arguments
+    if platform is None and spend_cap is None:
+        click.echo(ctx.get_help())
+        ctx.exit(0)
+
+    # Require both arguments for key issuance
+    if not platform or not spend_cap:
+        click.echo("Error: Both PLATFORM and SPEND_CAP are required")
+        click.echo("Usage: capit <platform> <spend_cap>")
+        click.echo("       capit --help")
+        ctx.exit(1)
+
+    # Auto-set prefix based on agent if not explicitly provided
+    if agent and not prefix:
+        prefix = agent
+
     try:
         key = do_issue(
-            platform, spend_cap, 
-            name=name, prefix=prefix, 
-            verbose=verbose, 
+            platform, spend_cap,
+            name=name, prefix=prefix,
+            verbose=verbose,
             interactive=interactive,
-            send_to=send_to
+            send_to=agent
         )
-        if not send_to:
+        if not agent:
             click.echo(key)
     except click.ClickException as e:
         click.echo(f"Error: {e.format_message()}", err=True)
@@ -323,7 +346,7 @@ def admin():
     pass
 
 
-@admin.command("--keys")
+@admin.command("keys")
 @click.argument("subcommand", required=False)
 @click.argument("args", nargs=-1)
 @click.option("-r", "--remote", is_flag=True, help="Remote operation (list/delete API keys)")
@@ -446,7 +469,7 @@ def keys_cmd(subcommand, args, remote, verbose):
         sys.exit(1)
 
 
-@admin.command("--platforms")
+@admin.command("platforms")
 def platforms_cmd():
     """List all available platforms."""
     platforms = list_platforms()
@@ -457,7 +480,7 @@ def platforms_cmd():
             click.echo(platform)
 
 
-@admin.command("--stores")
+@admin.command("stores")
 def stores_cmd():
     """List all available stores."""
     stores = list_stores()
@@ -468,7 +491,18 @@ def stores_cmd():
             click.echo(store)
 
 
-@admin.command("--enable")
+@admin.command("consumers")
+def consumers_cmd():
+    """List all available consumers."""
+    consumers = list_consumers()
+    if not consumers:
+        click.echo("No consumers installed")
+    else:
+        for consumer in consumers:
+            click.echo(consumer)
+
+
+@admin.command("enable")
 @click.argument("platform")
 def enable_cmd(platform):
     """Enable a platform."""
@@ -484,7 +518,7 @@ def enable_cmd(platform):
         sys.exit(1)
 
 
-@admin.command("--disable")
+@admin.command("disable")
 @click.argument("platform")
 def disable_cmd(platform):
     """Disable a platform."""
@@ -502,12 +536,24 @@ def disable_cmd(platform):
 
 def cli():
     """Main entry point."""
-    # Check for -- prefixed admin commands
+    # Check for --help/-h first - always show help
+    if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
+        main()
+        return
+
+    # Check for -- prefixed admin commands and translate them
     if len(sys.argv) > 1:
         arg = sys.argv[1]
-        if arg in ("--keys", "--platforms", "--stores", "--enable", "--disable"):
+        # Map --command to command
+        if arg.startswith("--") and len(arg) > 2:
+            sys.argv[1] = arg[2:]  # Remove -- prefix
+
+        # Check if it's an admin command
+        admin_commands = {"keys", "platforms", "stores", "consumers", "enable", "disable"}
+        if sys.argv[1] in admin_commands:
             admin()
             return
+
     main()
 
 
