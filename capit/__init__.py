@@ -124,7 +124,7 @@ def get_master_key(platform, store_name=None, interactive=False):
     return None, None
 
 
-def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interactive=False, send_to=None):
+def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interactive=False, send_to=None, confirm=True):
     """Issue a limited key for a platform with a spending cap."""
     ensure_capit_dir()
 
@@ -134,7 +134,7 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
 
     # Get master key (may prompt interactively)
     master_key, store_name = get_master_key(platform, interactive=interactive)
-    
+
     if not master_key:
         store_info = f" from store '{store_name}'" if store_name else ""
         raise click.ClickException(
@@ -169,8 +169,8 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
             
             # Handle send-to integration
             if send_to:
-                return handle_send_to(send_to, limited_key, platform, spend_cap)
-            
+                return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=confirm)
+
             return limited_key
         except Exception as e:
             error_msg = str(e)
@@ -234,24 +234,31 @@ def get_consumer_module(consumer_name):
     return module
 
 
-def handle_send_to(consumer, key, platform, spend_cap):
+def handle_send_to(consumer, key, platform, spend_cap, confirm=True):
     """Send the generated key to a consumer."""
     # Try to load consumer module dynamically
     consumer_module = get_consumer_module(consumer)
-    
+
     if not consumer_module:
         available = list_consumers()
         raise click.ClickException(
             f"Unknown consumer '{consumer}'.\n"
             f"Supported consumers: {', '.join(available) if available else 'none (add one to capit/consumers/)'}"
         )
-    
+
     if not hasattr(consumer_module, 'send'):
         raise click.ClickException(
             f"Consumer '{consumer}' is missing a 'send' function.\n"
             f"See capit/consumers/example.py for the required interface."
         )
-    
+
+    # Confirm before configuring agent
+    if confirm:
+        click.echo(f"\n⚠️  This will configure {consumer} with the new limited key.", err=True)
+        if not click.confirm("Continue?", default=True, err=True):
+            click.echo("Aborted.", err=True)
+            return key
+
     return consumer_module.send(key, platform, spend_cap)
 
 
@@ -269,11 +276,12 @@ def handle_send_to(consumer, key, platform, spend_cap):
 @click.option("--name", "-n", help="Name for the created key")
 @click.option("--prefix", "-p", help="Prefix for key organization")
 @click.option("--agent", "-a", metavar="AGENT", help="Send key to AI agent (claude, cursor, windsurf)")
+@click.option("--yes", "-y", is_flag=True, help="Skip confirmation when configuring agent")
 @click.option("--interactive", "-i", is_flag=True, help="Prompt for master key if not found")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 @click.version_option(version="0.2.0")
 @click.pass_context
-def main(ctx, platform, spend_cap, name, prefix, agent, interactive, verbose):
+def main(ctx, platform, spend_cap, name, prefix, agent, yes, interactive, verbose):
     """capit - Cap spending on your AI agents.
 
 \b
@@ -321,7 +329,8 @@ Administration:
             name=name, prefix=prefix,
             verbose=verbose,
             interactive=interactive,
-            send_to=agent
+            send_to=agent,
+            confirm=not yes
         )
         if not agent:
             click.echo(key)

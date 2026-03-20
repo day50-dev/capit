@@ -52,8 +52,11 @@ capit openrouter 1.00
 # Named key for organization
 capit openrouter 5.00 --name claude --prefix prod
 
-# Send directly to your agent
+# Send directly to your agent (auto-configures + auto-names the key)
 capit openrouter 5.00 --agent claude
+
+# Skip confirmation prompt
+capit openrouter 5.00 --agent claude -y
 ```
 
 ### First time? No setup friction
