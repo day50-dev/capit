@@ -60,29 +60,8 @@ The `-i` flag prompts for your OpenRouter management key once. It's used to crea
 
 ## Platforms
 
-### OpenRouter (LLM APIs)
-
-```bash
-capit openrouter 5.00 --agent claude
-```
-
-Creates keys with USD spending caps enforced by OpenRouter.
-
-### Unkey (Your APIs)
-
-```bash
-capit unkey 100 --name my-api --prefix prod
-```
-
-Creates keys with rate limits and credit quotas.
-
-### More platforms
-
-```bash
-capit --platforms  # List all platforms
-```
-
-See [platforms/README.md](capit/platforms/README.md) for the full list and adding custom platforms.
+The included platforms are [openrouter](https://openrouter.ai) and [unkey](https://unkey.com). Platforms are easy to create with a claude skill located in `skills/platform-creator.md`. 
+See [platforms/README.md](capit/platforms/README.md) for more details.
 
 ---
 
