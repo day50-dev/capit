@@ -295,12 +295,12 @@ Issue a limited key:
 Administration:
   capit --keys list                 List all API keys
   capit --keys list openrouter      List keys from provider
-  capit --keys disable openrouter   Disable an API key
-  capit --keys enable openrouter    Re-enable a disabled key
-  capit --keys delete openrouter    Permanently delete an API key
-  capit --keys add openrouter       Add a master key
-  capit --keys remove openrouter    Remove a master key (local only)
-  capit --platforms                 List available platforms
+  capit --keys disable <name>       Disable an API key by name
+  capit --keys enable <name>        Re-enable a disabled key by name
+  capit --keys delete <name>        Permanently delete an API key by name
+  capit --platforms                 List platforms
+  capit --platforms add openrouter  Add a master key
+  capit --platforms remove openrouter  Remove a master key
   capit --stores                    List available stores
   capit --consumers                 List available consumers
 """
@@ -357,45 +357,124 @@ def admin():
     pass
 
 
-@admin.command("keys")
+def _parse_key_pattern(pattern, lookup):
+    """Parse a key pattern and return matching keys across providers.
+    
+    Patterns supported:
+    - "name" - exact match or glob across all providers
+    - "provider/name" - exact match or glob on specific provider
+    - "name*" or "*name" or "name*pattern" - glob matching
+    
+    Returns list of tuples: (platform, key_id, key_data)
+    """
+    import fnmatch
+    
+    matches = []
+    
+    # Check if pattern includes provider prefix
+    if "/" in pattern:
+        parts = pattern.split("/", 1)
+        provider_filter = parts[0]
+        name_pattern = parts[1]
+    else:
+        provider_filter = None
+        name_pattern = pattern
+    
+    # Determine which providers to search
+    providers_to_search = []
+    if provider_filter:
+        if provider_filter in lookup:
+            providers_to_search = [provider_filter]
+        else:
+            return []  # Provider not found
+    else:
+        providers_to_search = list(lookup.keys())
+    
+    # Search each provider
+    for platform in providers_to_search:
+        info = lookup[platform]
+        store_module = get_store_module(info["store"])
+        master_key = store_module.retrieve_key(platform)
+        if not master_key:
+            continue
+        platform_module = get_platform_module(platform)
+        if not hasattr(platform_module, 'list_keys'):
+            continue
+        try:
+            keys = platform_module.list_keys(master_key)
+            for key in keys:
+                key_name = key.get("name", key.get("label", ""))
+                # Check if name matches pattern (glob or exact)
+                if fnmatch.fnmatch(key_name, name_pattern):
+                    # Get key ID - try multiple field names
+                    key_id = key.get("id") or key.get("hash") or key.get("key_id")
+                    if key_id:
+                        matches.append((platform, key_id, key))
+        except Exception:
+            continue
+    
+    return matches
+
+
+def _find_key_by_name(platform_module, master_key, key_name):
+    """Find a key by name and return its ID."""
+    keys = platform_module.list_keys(master_key)
+    for key in keys:
+        name = key.get("name", key.get("label", ""))
+        if name == key_name:
+            return key.get("id"), key
+    return None, None
+
+
+@admin.command("keys", context_settings=dict(
+    ignore_unknown_options=True,
+    help_option_names=[]  # Disable click's built-in --help handling
+))
 @click.argument("subcommand", required=False)
 @click.argument("args", nargs=-1)
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output")
 def keys_cmd(subcommand, args, verbose):
-    """Manage keys.
-
-    capit --keys list                    List all API keys from all providers
-    capit --keys list openrouter         List API keys from specific provider
-    capit --keys list openrouter capit-*   Filter keys by prefix
-    capit --keys disable openrouter <id> Disable an API key
-    capit --keys enable openrouter <id>  Re-enable a disabled key
-    capit --keys delete openrouter <id>  Permanently delete an API key
-    capit --keys add openrouter          Add a master key
-    capit --keys remove openrouter       Remove a master key (local only)
-    """
+    """Manage keys."""
     import fnmatch
 
-    if not subcommand:
+    # Check for --help explicitly to show nice help screen
+    if "--help" in sys.argv or "-h" in sys.argv:
         click.echo("Usage: capit --keys <command> [args]")
         click.echo("")
         click.echo("Commands:")
-        click.echo("  list                List all API keys from all providers")
-        click.echo("  list <provider>     List API keys from specific provider")
-        click.echo("  list <provider> <prefix>  Filter keys by prefix")
-        click.echo("  disable <provider> <key_id>  Disable an API key")
-        click.echo("  enable <provider> <key_id>   Re-enable a disabled key")
-        click.echo("  delete <provider> <key_id>   Permanently delete an API key")
-        click.echo("  add <provider>      Add a master key")
-        click.echo("  remove <provider>   Remove a master key (local only)")
-        return
+        click.echo("  list                     List all API keys from all providers")
+        click.echo("  list <provider>          List API keys from specific provider")
+        click.echo("  list <provider> <prefix> Filter keys by prefix")
+        click.echo("  disable <pattern>        Disable API key(s) by name pattern")
+        click.echo("  enable <pattern>         Re-enable disabled key(s)")
+        click.echo("  delete <pattern>         Permanently delete key(s)")
+        click.echo("")
+        click.echo("Patterns:")
+        click.echo("  name              Exact match or glob across all providers")
+        click.echo("  provider/name     Match on specific provider")
+        click.echo("  name*             Glob pattern (e.g., 'capit-*')")
+        click.echo("")
+        click.echo("Examples:")
+        click.echo("  capit --keys list")
+        click.echo("  capit --keys list openrouter")
+        click.echo("  capit --keys disable claude-71ad2519")
+        click.echo("  capit --keys disable 'capit-*'")
+        click.echo("  capit --keys disable 'openrouter/capit-*'")
+        sys.exit(0)
+
+    # If no subcommand, default to list all
+    if subcommand is None:
+        subcommand = "list"
+        args = tuple()
 
     if subcommand == "list":
         if not args:
-            # List keys from all registered providers
+            # List keys from all registered providers with namespaced names
             lookup = load_master_lookup()
             if not lookup:
                 click.echo("No keys registered")
             else:
+                all_keys = []
                 for platform, info in lookup.items():
                     store_module = get_store_module(info["store"])
                     master_key = store_module.retrieve_key(platform)
@@ -406,15 +485,37 @@ def keys_cmd(subcommand, args, verbose):
                         continue
                     try:
                         keys = platform_module.list_keys(master_key)
-                        click.echo(f"{platform}:")
                         for key in keys:
-                            key_name = key.get("name", key.get("label", "unnamed"))
-                            created = key.get("created_at", "")[:10] if key.get("created_at") else ""
-                            date_str = f" ({created})" if created else ""
-                            click.echo(f"    * {key_name}{date_str}")
+                            key_with_provider = {
+                                **key,
+                                "_provider": platform,
+                                "_namespaced_name": f"{platform}/{key.get('name', key.get('label', 'unnamed'))}"
+                            }
+                            all_keys.append(key_with_provider)
                     except Exception:
                         # Skip providers that can't be reached
                         pass
+                # Sort by namespaced name
+                all_keys = sorted(all_keys, key=lambda k: k.get("_namespaced_name", "").lower())
+                # Print header with unicode box drawing
+                click.echo(f"{'NAME':<40} {'LIMIT':>10} {'CREATED':<12} {'STATUS':<10}")
+                click.echo("─" * 76)
+                for key in all_keys:
+                    key_name = key.get("_namespaced_name", "unknown")
+                    limit_val = key.get("limit")
+                    if limit_val is not None:
+                        limit_str = f"{limit_val:.2f}"
+                    else:
+                        limit_str = "unlimited"
+                    created = key.get("created_at", "")[:10] if key.get("created_at") else ""
+                    status = "disabled" if key.get("disabled") else "active"
+                    # Color status
+                    if status == "active":
+                        status_display = click.style(status, fg="green")
+                    else:
+                        status_display = click.style(status, fg="yellow")
+                    click.echo(f"{key_name:<40} {limit_str:>10} {created:<12} {status_display:<10}")
+                click.echo(f"\nTotal: {len(all_keys)} key(s)")
         else:
             # List keys from specific provider
             platform = args[0]
@@ -436,11 +537,12 @@ def keys_cmd(subcommand, args, verbose):
             if prefix:
                 filtered_keys = [k for k in keys if fnmatch.fnmatch(k.get("name", k.get("label", "")), prefix)]
                 keys = filtered_keys
-            # Print header
-            click.echo(f"{'ID':<18} {'NAME':<30} {'LIMIT':>10} {'CREATED':<12} {'STATUS':<10}")
-            click.echo("-" * 82)
+            # Print header with unicode box drawing
+            click.echo(f"{'NAME':<35} {'LIMIT':>10} {'CREATED':<12} {'STATUS':<10}")
+            click.echo("─" * 71)
+            # Sort by name for intuitive grouping
+            keys = sorted(keys, key=lambda k: k.get("name", k.get("label", "")).lower())
             for key in keys:
-                key_id = key.get("id", key.get("hash", "unknown"))
                 key_name = key.get("name", key.get("label", "unnamed"))
                 limit_val = key.get("limit")
                 if limit_val is not None:
@@ -449,125 +551,197 @@ def keys_cmd(subcommand, args, verbose):
                     limit_str = "unlimited"
                 created = key.get("created_at", "")[:10] if key.get("created_at") else ""
                 status = "disabled" if key.get("disabled") else "active"
-                click.echo(f"{key_id[:16]:<18} {key_name:<30} {limit_str:>10} {created:<12} {status:<10}")
+                # Color status
+                if status == "active":
+                    status_display = click.style(status, fg="green")
+                else:
+                    status_display = click.style(status, fg="yellow")
+                click.echo(f"{key_name:<35} {limit_str:>10} {created:<12} {status_display:<10}")
             click.echo(f"\nTotal: {len(keys)} key(s)")
+        return
+
+    if not args:
+        click.echo("Usage: capit --keys <command> [args]")
+        click.echo("")
+        click.echo("Commands:")
+        click.echo("  list                     List all API keys from all providers")
+        click.echo("  list <provider>          List API keys from specific provider")
+        click.echo("  list <provider> <prefix> Filter keys by prefix")
+        click.echo("  disable <pattern>        Disable API key(s) by name pattern")
+        click.echo("  enable <pattern>         Re-enable disabled key(s)")
+        click.echo("  delete <pattern>         Permanently delete key(s)")
+        click.echo("")
+        click.echo("Patterns:")
+        click.echo("  name              Exact match or glob across all providers")
+        click.echo("  provider/name     Match on specific provider")
+        click.echo("  name*             Glob pattern (e.g., 'capit-*')")
+        click.echo("")
+        click.echo("Examples:")
+        click.echo("  capit --keys disable claude-71ad2519")
+        click.echo("  capit --keys disable 'capit-*'")
+        click.echo("  capit --keys disable 'openrouter/capit-*'")
+        return
 
     elif subcommand == "disable":
-        if len(args) < 2:
-            click.echo("Usage: capit --keys disable <provider> <key_id>")
+        if not args:
+            click.echo("Usage: capit --keys disable <pattern>")
             sys.exit(1)
-        platform, key_id = args[0], args[1]
+        pattern = args[0]
         ensure_capit_dir()
         lookup = load_master_lookup()
-        if platform not in lookup:
-            click.echo(f"No master key found for '{platform}'")
+        matches = _parse_key_pattern(pattern, lookup)
+        if not matches:
+            click.echo(f"No keys matching '{pattern}'")
             sys.exit(1)
-        store_module = get_store_module(lookup[platform]["store"])
-        master_key = store_module.retrieve_key(platform)
-        platform_module = get_platform_module(platform)
-        if not hasattr(platform_module, 'disable_key'):
-            click.echo(f"Provider '{platform}' doesn't support disabling keys")
-            sys.exit(1)
-        try:
-            platform_module.disable_key(master_key, key_id)
-            click.echo(f"Key '{key_id}' disabled")
-        except Exception as e:
-            click.echo(f"Error: {e}")
-            sys.exit(1)
+        disabled_count = 0
+        for platform, key_id, key_data in matches:
+            key_name = key_data.get("name", key_data.get("label", ""))
+            store_module = get_store_module(lookup[platform]["store"])
+            master_key = store_module.retrieve_key(platform)
+            platform_module = get_platform_module(platform)
+            if not hasattr(platform_module, 'disable_key'):
+                click.echo(f"Provider '{platform}' doesn't support disabling keys")
+                continue
+            try:
+                platform_module.disable_key(master_key, key_id)
+                click.echo(f"Disabled: {platform}/{key_name}")
+                disabled_count += 1
+            except Exception as e:
+                click.echo(f"Error disabling {platform}/{key_name}: {e}")
+        click.echo(f"\nDisabled {disabled_count} key(s)")
+        return
 
     elif subcommand == "enable":
-        if len(args) < 2:
-            click.echo("Usage: capit --keys enable <provider> <key_id>")
+        if not args:
+            click.echo("Usage: capit --keys enable <pattern>")
             sys.exit(1)
-        platform, key_id = args[0], args[1]
+        pattern = args[0]
         ensure_capit_dir()
         lookup = load_master_lookup()
-        if platform not in lookup:
-            click.echo(f"No master key found for '{platform}'")
+        matches = _parse_key_pattern(pattern, lookup)
+        if not matches:
+            click.echo(f"No keys matching '{pattern}'")
             sys.exit(1)
-        store_module = get_store_module(lookup[platform]["store"])
-        master_key = store_module.retrieve_key(platform)
-        platform_module = get_platform_module(platform)
-        if not hasattr(platform_module, 'enable_key'):
-            click.echo(f"Provider '{platform}' doesn't support enabling keys")
-            sys.exit(1)
-        try:
-            platform_module.enable_key(master_key, key_id)
-            click.echo(f"Key '{key_id}' enabled")
-        except Exception as e:
-            click.echo(f"Error: {e}")
-            sys.exit(1)
+        enabled_count = 0
+        for platform, key_id, key_data in matches:
+            key_name = key_data.get("name", key_data.get("label", ""))
+            store_module = get_store_module(lookup[platform]["store"])
+            master_key = store_module.retrieve_key(platform)
+            platform_module = get_platform_module(platform)
+            if not hasattr(platform_module, 'enable_key'):
+                click.echo(f"Provider '{platform}' doesn't support enabling keys")
+                continue
+            try:
+                platform_module.enable_key(master_key, key_id)
+                click.echo(f"Enabled: {platform}/{key_name}")
+                enabled_count += 1
+            except Exception as e:
+                click.echo(f"Error enabling {platform}/{key_name}: {e}")
+        click.echo(f"\nEnabled {enabled_count} key(s)")
+        return
 
     elif subcommand == "delete":
-        if len(args) < 2:
-            click.echo("Usage: capit --keys delete <provider> <key_id>")
+        if not args:
+            click.echo("Usage: capit --keys delete <pattern>")
             sys.exit(1)
-        platform, key_id = args[0], args[1]
+        pattern = args[0]
         ensure_capit_dir()
         lookup = load_master_lookup()
-        if platform not in lookup:
-            click.echo(f"No master key found for '{platform}'")
+        matches = _parse_key_pattern(pattern, lookup)
+        if not matches:
+            click.echo(f"No keys matching '{pattern}'")
             sys.exit(1)
-        store_module = get_store_module(lookup[platform]["store"])
-        master_key = store_module.retrieve_key(platform)
-        platform_module = get_platform_module(platform)
-        if not hasattr(platform_module, 'delete_key'):
-            click.echo(f"Provider '{platform}' doesn't support deleting keys")
-            sys.exit(1)
-        try:
-            platform_module.delete_key(master_key, key_id)
-            click.echo(f"Key '{key_id}' deleted")
-        except Exception as e:
-            click.echo(f"Error: {e}")
-            sys.exit(1)
-    
-    elif subcommand == "add":
-        if not args:
-            click.echo("Usage: capit --keys add <platform>")
-            sys.exit(1)
-        platform = args[0]
-        ensure_capit_dir()
-        stores = list_stores()
-        default_store = "dotenv" if "dotenv" in stores else stores[0]
-        click.echo(f"Store: {default_store}")
-        click.echo("Add key:")
-        master_key = click.prompt("Key", hide_input=True)
-        store_module = get_store_module(default_store)
-        store_module.store_key(platform, master_key)
-        lookup = load_master_lookup()
-        lookup[platform] = {"store": default_store, "added_at": datetime.now().isoformat()}
-        save_master_lookup(lookup)
-        click.echo("Key added")
-    
-    elif subcommand == "remove":
-        if not args:
-            click.echo("Usage: capit --keys remove <platform>")
-            sys.exit(1)
-        platform = args[0]
-        lookup = load_master_lookup()
-        if platform not in lookup:
-            click.echo(f"No key found for '{platform}'")
-            sys.exit(1)
-        store_module = get_store_module(lookup[platform]["store"])
-        store_module.delete_key(platform)
-        del lookup[platform]
-        save_master_lookup(lookup)
-        click.echo("Success")
-    
+        deleted_count = 0
+        for platform, key_id, key_data in matches:
+            key_name = key_data.get("name", key_data.get("label", ""))
+            store_module = get_store_module(lookup[platform]["store"])
+            master_key = store_module.retrieve_key(platform)
+            platform_module = get_platform_module(platform)
+            if not hasattr(platform_module, 'delete_key'):
+                click.echo(f"Provider '{platform}' doesn't support deleting keys")
+                continue
+            try:
+                platform_module.delete_key(master_key, key_id)
+                click.echo(f"Deleted: {platform}/{key_name}")
+                deleted_count += 1
+            except Exception as e:
+                click.echo(f"Error deleting {platform}/{key_name}: {e}")
+        click.echo(f"\nDeleted {deleted_count} key(s)")
+        return
+
     else:
         click.echo(f"Unknown command: {subcommand}")
         sys.exit(1)
 
 
 @admin.command("platforms")
-def platforms_cmd():
-    """List all available platforms."""
-    platforms = list_platforms()
-    if not platforms:
-        click.echo("No platforms installed")
-    else:
-        for platform in platforms:
-            click.echo(platform)
+@click.argument("subcommand", required=False)
+@click.argument("args", nargs=-1)
+def platforms_cmd(subcommand, args):
+    """Manage platforms and master keys."""
+    if subcommand is None:
+        platforms = list_platforms()
+        if not platforms:
+            click.echo("No platforms installed")
+        else:
+            click.echo("Usage: capit --platforms <command> [args]")
+            click.echo("")
+            click.echo("Commands:")
+            click.echo("  list              List available platforms")
+            click.echo("  add <platform>    Add a master key for a platform")
+            click.echo("  remove <platform> Remove a master key (local only)")
+            click.echo("")
+            click.echo("Platforms:")
+            for platform in platforms:
+                click.echo(f"  {platform}")
+        return
+
+    if subcommand == "list":
+        platforms = list_platforms()
+        if not platforms:
+            click.echo("No platforms installed")
+        else:
+            for platform in platforms:
+                click.echo(platform)
+        return
+
+    if subcommand == "add":
+        if not args:
+            click.echo("Usage: capit --platforms add <platform>")
+            sys.exit(1)
+        platform = args[0]
+        ensure_capit_dir()
+        stores = list_stores()
+        default_store = "dotenv" if "dotenv" in stores else stores[0]
+        click.echo(f"Store: {default_store}")
+        click.echo("Add master key:")
+        master_key = click.prompt("Key", hide_input=True)
+        store_module = get_store_module(default_store)
+        store_module.store_key(platform, master_key)
+        lookup = load_master_lookup()
+        lookup[platform] = {"store": default_store, "added_at": datetime.now().isoformat()}
+        save_master_lookup(lookup)
+        click.echo("Master key added")
+        return
+
+    if subcommand == "remove":
+        if not args:
+            click.echo("Usage: capit --platforms remove <platform>")
+            sys.exit(1)
+        platform = args[0]
+        lookup = load_master_lookup()
+        if platform not in lookup:
+            click.echo(f"No master key found for '{platform}'")
+            sys.exit(1)
+        store_module = get_store_module(lookup[platform]["store"])
+        store_module.delete_key(platform)
+        del lookup[platform]
+        save_master_lookup(lookup)
+        click.echo("Master key removed")
+        return
+
+    click.echo(f"Unknown command: {subcommand}")
+    sys.exit(1)
 
 
 @admin.command("stores")
