@@ -6,7 +6,7 @@
 </p>
 
 ```bash
-$ uvx capit openrouter 5.00 --agent openclaw -y
+$ uvx capit openrouter 5.00 --agent openclaw
 $5.00 openrouter key installed into openclaw
 ```
 
