@@ -2,271 +2,105 @@
 <img width="500" height="187" alt="capit_500" src="https://github.com/user-attachments/assets/db22c959-ffee-4540-9108-2928e9c73f70" />
 <br/>
 <a href=https://pypi.org/project/capit><img src=https://badge.fury.io/py/capit.svg/></a>
-<br/><strong>Buget per-agent, per-provider, as little or as much as you want</strong>
+<br/><strong>Budget per-agent, per-provider, as little or as much as you want</strong>
 </p>
 
 ```bash
-$ uvx capit openrouter 5.00 --agent openclaw
-$5.00 openrouter key installed into openclaw
+$ uvx capit openrouter 5.00 --agent claude -y
+$5.00 openrouter key installed into claude
 ```
 
-That's it. You now have an API key with a **$5 spending cap** enforced by OpenRouter installed into openclaw's setting file. If it goes rogue, it can only cost you $5.
+That's it. Claude Code now has a capped API key. If it goes rogue, it can only cost you $5.
 
-## The Problem
+---
 
-You want to use AI agents but you don't trust them with unlimited access to your credit card:
-
-- Claude Code might get stuck in a loop
-- Cursor might burn through tokens debugging
-- Your custom agent might have a bug
-- You want to try multiple agents without risk
-
-Traditional secrets management is overkill. You just want a **spending limit**.
-
-## The Solution
-
-capit creates **limited API keys** with spending caps enforced by the provider:
-
-```bash
-# Give Claude Code a $5 cap
-capit openrouter 5.00 --agent claude
-
-# Give Cursor a $10 cap  
-capit openrouter 10.00 --agent cursor
-
-# Give your custom agent a $1 cap
-capit openrouter 1.00
-```
-
-## Quick Start
-
-### Install
+## Install
 
 ```bash
 pip install capit
 ```
 
-### Issue a limited key
+## Usage
+
+### Give an agent a budget
 
 ```bash
-# Basic: $1 cap
-capit openrouter 1.00
-
-# Named key for organization
-capit openrouter 5.00 --name claude --prefix prod
-
-# Send directly to your agent (auto-configures + auto-names the key)
-capit openrouter 5.00 --agent claude
-
-# Skip confirmation prompt
+# Claude Code - $5 cap
 capit openrouter 5.00 --agent claude -y
+
+# Cursor - $10 cap
+capit openrouter 10.00 --agent cursor -y
+
+# Windsurf - $5 cap
+capit openrouter 5.00 --agent windsurf -y
+
+# OpenClaw - $5 cap
+capit openrouter 5.00 --agent openclaw -y
 ```
 
-### First time? No setup friction
+Each agent gets its own capped key. Sleep soundly.
+
+### More agents
 
 ```bash
-$ capit openrouter 5.00 -i
-No master key found for 'openrouter'.
-Enter your management API key (won't be stored):
-Key: sk-or-v1-management-...
-sk-or-v1-limited-key-...
+capit --consumers  # List all supported agents
 ```
 
-The `-i` flag prompts for your management key once, uses it to create the limited key, and discards it. Perfect for trying it out.
+See [consumers/README.md](capit/consumers/README.md) for the full list and adding custom agents.
 
-## Consumers
-
-"Consumers" are AI agents and tools that use API keys. capit sends capped keys directly to them:
+### First time?
 
 ```bash
-# List available consumers
-capit --consumers
-# claude
-# cursor
-# windsurf
-# example
-
-# Send to a consumer
-capit openrouter 5.00 --agent claude
+capit openrouter 5.00 --agent claude -i -y
 ```
 
-### Built-in consumers
+The `-i` flag prompts for your OpenRouter management key once. It's used to create the capped key, then discarded.
 
-| Consumer | Command | Output |
-|----------|---------|--------|
-| Claude / Claude Code | `capit openrouter 5.00 --agent claude` | `$5.00 openrouter key installed into claude` |
-| Cursor IDE | `capit openrouter 10.00 --agent cursor` | `$10.00 openrouter key installed into cursor` |
-| Windsurf | `capit openrouter 5.00 --agent windsurf` | `$5.00 openrouter key installed into windsurf` |
-| OpenClaw | `capit openrouter 5.00 --agent openclaw` | `$5.00 openrouter key installed into openclaw` |
-
-### Example: Claude Code
-
-```bash
-# Create a $5 capped key and install it
-$ capit openrouter 5.00 --agent claude -y
-$5.00 openrouter key installed into claude
-```
-
-The key is automatically written to `~/.claude/.credentials.json`. Just run `claude` to start.
-
-Now Claude can only spend $5. Sleep soundly.
-
-### Add your own consumer
-
-Consumers live in `capit/consumers/`. To add one:
-
-```bash
-# Copy the template
-cp capit/consumers/example.py capit/consumers/myagent.py
-
-# Edit it to customize for your tool
-```
-
-The `send()` function in your consumer file gets called with the key and should output instructions or configure your tool. See [new-platform.md](new-platform.md) for details.
-
-## For Agent Authors
-
-If you're building an AI agent, make it a **consumer**:
-
-### Option 1: Document the command
-
-Tell users to run:
-```bash
-capit openrouter 5.00 --agent your-agent
-```
-
-### Option 2: Integrate directly
-
-Add a handler in your setup script:
-
-```python
-# In your agent's install/setup script
-import subprocess
-
-def setup_api_key():
-    result = subprocess.run(
-        ["capit", "openrouter", "5.00", "--agent", "your-agent"],
-        capture_output=True,
-        text=True
-    )
-    # Parse the key from output and configure
-```
-
-### Option 3: Create a custom consumer
-
-Add your handler to capit (or fork and customize):
-
-```python
-def send_to_youragent(key, platform, spend_cap):
-    click.echo(f"\n🔑 Limited key for {platform} (${spend_cap} cap)")
-    click.echo(f"Key: {key}")
-    click.echo(f"\nAdd to ~/.youragent/config:")
-    click.echo(f"  api_key: {key}")
-    # Or write directly to config file
-    return key
-```
-
-## Administration
-
-All admin commands use `--` prefix (Unix style):
-
-```bash
-# List your stored master keys
-capit --keys list
-
-# Add a master key (stored locally for future use)
-capit --keys add openrouter
-
-# List actual API keys created on OpenRouter
-capit --keys list -r openrouter
-# Output:
-#   4ab1e7e3ebc75228...  prod-claude-abc123    $5    2026-03-19  [active]
-#   5f54d6da2cdf0d47...  dev-testing-def456    $1    2026-03-19  [active]
-
-# Revoke a specific API key
-capit --keys delete openrouter 4ab1e7e3ebc75228
-
-# Remove a stored master key
-capit --keys remove openrouter
-
-# List platforms
-capit --platforms
-
-# List storage backends
-capit --stores
-```
-
-## How It Works
-
-1. You run `capit openrouter 5.00`
-2. capit calls OpenRouter's Management API
-3. capit creates a **guardrail** with $5 budget limit
-4. capit creates an **API key** with that guardrail attached
-5. You get back a limited key: `sk-or-v1-...`
-
-The spending cap is **enforced by OpenRouter**, not just locally tracked. The key literally cannot spend more than the cap.
+---
 
 ## Platforms
 
-capit works with multiple platforms:
-
 ### OpenRouter (LLM APIs)
-
-Creates keys with spending caps enforced by OpenRouter. Perfect for AI agents.
 
 ```bash
 capit openrouter 5.00 --agent claude
 ```
 
-### Unkey (Rate-limited API keys)
+Creates keys with USD spending caps enforced by OpenRouter. Perfect for AI agents.
 
-Creates keys with rate limits and usage caps. Perfect for API access control.
+### Unkey (Your APIs)
 
 ```bash
-# 100 credits + 10 requests/minute rate limit
 capit unkey 100 --name my-api --prefix prod
 ```
 
-Unkey supports:
-- **Usage limits** - Cap total API calls (credits)
-- **Rate limits** - Requests per second/minute/hour
-- **Auto-refill** - Optional daily or monthly credit restoration
-- **Key expiration** - Temporary keys that auto-expire
+Creates keys with rate limits and credit quotas. Perfect for API access control.
 
-See [new-platform.md](new-platform.md) for adding more platforms.
+---
 
-## Storage
-
-Master keys are stored locally in `$HOME/.local/capit/`:
-- `secrets.txt` - Your master keys (dotenv format)
-- `master-lookup` - Maps platforms to storage backends
-
-You can implement custom storage backends (YubiKey-gated, encrypted, etc.). See `capit/stores/dotenv.py` for the interface.
-
-## One-shot / Ephemeral Mode
-
-Don't want to store anything? Use `-i` to enter your key once:
+## Administration
 
 ```bash
-capit openrouter 5.00 -i
+capit --keys list              # Your master keys
+capit --keys list -r openrouter  # Capped keys created on OpenRouter
+capit --keys delete openrouter <id>  # Revoke a key
+capit --platforms              # Available platforms
+capit --consumers              # Supported agents
 ```
 
-The key is used to create the limited key, then discarded. Next time you'll be prompted again. Perfect for:
-- Trying capit for the first time
-- CI/CD environments
-- Shared machines
+---
 
-## Why This Matters
+## How It Works
 
-AI agents are powerful but unpredictable. You should be able to:
+1. You run `capit openrouter 5.00 --agent claude -y`
+2. capit calls OpenRouter's API
+3. capit creates a **guardrail** with $5 cap
+4. capit creates an **API key** with that guardrail
+5. capit writes the key to `~/.claude/.credentials.json`
+6. Done
 
-1. **Try new agents** without financial risk
-2. **Give different agents different budgets** (Claude gets $10, experimental agent gets $1)
-3. **Revoke access instantly** when you're done
-4. **Sleep soundly** knowing your credit card is safe
+The cap is **enforced by OpenRouter**. The key literally cannot spend more than $5.
 
-capit makes this trivial. One command. Done.
+---
 
-## License
-
-MIT
+**MIT License**
