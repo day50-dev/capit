@@ -208,58 +208,58 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
     return limited_key
 
 
-CONSUMERS_DIR = SCRIPT_DIR / "consumers"
+AGENTS_DIR = SCRIPT_DIR / "agents"
 
 
-def list_consumers():
-    """List all available consumers."""
-    consumers = []
-    if CONSUMERS_DIR.exists():
-        for f in CONSUMERS_DIR.glob("*.py"):
+def list_agents():
+    """List all available agents."""
+    agents = []
+    if AGENTS_DIR.exists():
+        for f in AGENTS_DIR.glob("*.py"):
             if f.name != "__init__.py" and not f.name.endswith(".disabled"):
-                consumers.append(f.stem)
-    return consumers
+                agents.append(f.stem)
+    return agents
 
 
-def get_consumer_module(consumer_name):
-    """Dynamically load a consumer module."""
-    consumer_file = CONSUMERS_DIR / f"{consumer_name}.py"
-    if not consumer_file.exists():
+def get_agent_module(agent_name):
+    """Dynamically load an agent module."""
+    agent_file = AGENTS_DIR / f"{agent_name}.py"
+    if not agent_file.exists():
         return None
-    
+
     import importlib.util
-    spec = importlib.util.spec_from_file_location(consumer_name, consumer_file)
+    spec = importlib.util.spec_from_file_location(agent_name, agent_file)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
-def handle_send_to(consumer, key, platform, spend_cap, confirm=True):
-    """Send the generated key to a consumer."""
-    # Try to load consumer module dynamically
-    consumer_module = get_consumer_module(consumer)
+def handle_send_to(agent, key, platform, spend_cap, confirm=True):
+    """Send the generated key to an agent."""
+    # Try to load agent module dynamically
+    agent_module = get_agent_module(agent)
 
-    if not consumer_module:
-        available = list_consumers()
+    if not agent_module:
+        available = list_agents()
         raise click.ClickException(
-            f"Unknown consumer '{consumer}'.\n"
-            f"Supported consumers: {', '.join(available) if available else 'none (add one to capit/consumers/)'}"
+            f"Unknown agent '{agent}'.\n"
+            f"Supported agents: {', '.join(available) if available else 'none (add one to capit/agents/)'}"
         )
 
-    if not hasattr(consumer_module, 'send'):
+    if not hasattr(agent_module, 'send'):
         raise click.ClickException(
-            f"Consumer '{consumer}' is missing a 'send' function.\n"
-            f"See capit/consumers/example.py for the required interface."
+            f"Agent '{agent}' is missing a 'send' function.\n"
+            f"See capit/agents/example.py for the required interface."
         )
 
     # Confirm before configuring agent
     if confirm:
-        click.echo(f"\n⚠️  This will configure {consumer} with the new limited key.", err=True)
+        click.echo(f"\n⚠️  This will configure {agent} with the new limited key.", err=True)
         if not click.confirm("Continue?", default=True, err=True):
             click.echo("Aborted.", err=True)
             return key
 
-    return consumer_module.send(key, platform, spend_cap)
+    return agent_module.send(key, platform, spend_cap)
 
 
 # =============================================================================

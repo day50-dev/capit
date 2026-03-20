@@ -54,7 +54,7 @@ See [agents/README.md](capit/agents/README.md) for the full list and adding cust
 capit openrouter 5.00 --agent claude -i -y
 ```
 
-The `-i` flag prompts for your OpenRouter management key once. It's used to create the capped key, then discarded.
+The `-i` flag prompts for your OpenRouter management key once. It's used to create the capped key.
 
 ---
 
