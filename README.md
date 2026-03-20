@@ -43,10 +43,10 @@ Each agent gets its own capped key. Sleep soundly.
 ### More agents
 
 ```bash
-capit --consumers  # List all supported agents
+capit --agents  # List all supported agents
 ```
 
-See [consumers/README.md](capit/consumers/README.md) for the full list and adding custom agents.
+See [agents/README.md](capit/agents/README.md) for the full list and adding custom agents.
 
 ### First time?
 
@@ -72,10 +72,11 @@ See [platforms/README.md](capit/platforms/README.md) for more details.
 
 ```bash
 capit --keys list              # Your master keys
-capit --keys list -r openrouter  # Capped keys created on OpenRouter
-capit --keys delete openrouter <id>  # Revoke a key
+capit --keys list openrouter   # Capped keys created on OpenRouter
+capit --keys delete openrouter <name>  # Delete a key
+capit --keys disable claude-*  # Disable keys matching pattern
 capit --platforms              # Available platforms
-capit --consumers              # Supported agents
+capit --agents                 # Supported agents
 ```
 
 ---
