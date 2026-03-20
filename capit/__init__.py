@@ -302,6 +302,9 @@ Administration:
   capit --platforms remove        Remove a master key
   capit --stores                  List available stores
   capit --agents                  List available agents
+
+\b
+Capit is a DAY50 tool. day50.dev
 """
     # Check for help flag explicitly
     if '--help' in sys.argv or '-h' in sys.argv:
