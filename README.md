@@ -26,16 +26,16 @@ uvx install capit
 
 ```bash
 # Claude Code - $5 cap
-capit openrouter 5.00 --agent claude -y
+capit openrouter 5.00 --agent claude
 
 # Cursor - $10 cap
-capit openrouter 10.00 --agent cursor -y
+capit openrouter 10.00 --agent cursor
 
 # Windsurf - $5 cap
-capit openrouter 5.00 --agent windsurf -y
+capit openrouter 5.00 --agent windsurf
 
 # OpenClaw - $5 cap
-capit openrouter 5.00 --agent openclaw -y
+capit openrouter 5.00 --agent openclaw
 ```
 
 Each agent gets its own capped key. Sleep soundly.
@@ -51,7 +51,7 @@ See [agents/README.md](capit/agents/README.md) for the full list and adding cust
 ### First time?
 
 ```bash
-capit openrouter 5.00 --agent claude -i -y
+capit openrouter 5.00 --agent claude -i
 ```
 
 The `-i` flag prompts for your OpenRouter management key once. It's used to create the capped key.
@@ -83,7 +83,7 @@ capit --agents                 # Supported agents
 
 ## How It Works
 
-1. You run `capit openrouter 5.00 --agent claude -y`
+1. You run `capit openrouter 5.00 --agent claude`
 2. capit calls OpenRouter's API
 3. capit creates a **guardrail** with $5 cap
 4. capit creates an **API key** with that guardrail
