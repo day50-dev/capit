@@ -286,7 +286,7 @@ def main(ctx, platform, spend_cap, name, prefix, agent, yes, interactive, verbos
 \b
 Issue a limited key:
   capit openrouter 1.00
-  capit openrouter 5.00 --name production --prefix prod
+  capit openrouter 5.00 --name prod
   capit openrouter 1.00 --agent claude
   capit openrouter 1.00 -i
 
@@ -301,7 +301,7 @@ Administration:
   capit --platforms add           Add a master key
   capit --platforms remove        Remove a master key
   capit --stores                  List available stores
-  capit --consumers               List available consumers
+  capit --agents                  List available agents
 """
     # Check for help flag explicitly
     if '--help' in sys.argv or '-h' in sys.argv:
@@ -754,12 +754,12 @@ def stores_cmd():
             click.echo(store)
 
 
-@admin.command("consumers")
-def consumers_cmd():
-    """List all available consumers."""
+@admin.command("agents")
+def agents_cmd():
+    """List all available agents."""
     consumers = list_consumers()
     if not consumers:
-        click.echo("No consumers installed")
+        click.echo("No agents installed")
     else:
         for consumer in consumers:
             click.echo(consumer)
@@ -817,7 +817,7 @@ def cli():
             sys.argv[1] = arg[2:]  # Remove -- prefix
 
         # Check if it's an admin command
-        admin_commands = {"keys", "platforms", "stores", "consumers", "enable", "disable"}
+        admin_commands = {"keys", "platforms", "stores", "agents", "enable", "disable"}
         if sys.argv[1] in admin_commands:
             admin()
             return
