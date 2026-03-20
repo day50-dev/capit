@@ -1,13 +1,14 @@
-# capit
-
-**Cap spending on your AI agents.**
+<p align="center">
+<img width="500" height="187" alt="capit_500" src="https://github.com/user-attachments/assets/db22c959-ffee-4540-9108-2928e9c73f70" />
+<br/><strong>Buget per-agent, per-provider, as little or as much as you want</strong>
+</p>
 
 ```bash
-$ capit openrouter 5.00
-sk-or-v1-...
+$ capit openrouter 5.00 --agent openclaw
+$5.00 openrouter key installed into openclaw
 ```
 
-That's it. You now have an API key with a **$5/month spending cap** enforced by OpenRouter. Give it to Claude Code, Cursor, or any AI agent. If it goes rogue, it can only spend $5.
+That's it. You now have an API key with a **$5/month spending cap** enforced by OpenRouter installed into openclaw's setting file. If it goes rogue, it can only spend $5.
 
 ## The Problem
 
