@@ -6,11 +6,11 @@
 </p>
 
 ```bash
-$ uvx capit openrouter 5.00 --agent claude -y
-$5.00 openrouter key installed into claude
+$ uvx capit openrouter 5.00 --agent openclaw -y
+$5.00 openrouter key installed into openclaw
 ```
 
-That's it. Claude Code now has a capped API key. If it goes rogue, it can only cost you $5.
+That's it. Openclaw now has a capped API key. If it goes rogue, it can only cost you $5.
 
 ---
 
