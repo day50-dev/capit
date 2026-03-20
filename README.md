@@ -102,18 +102,12 @@ capit openrouter 5.00 --agent claude
 ### Example: Claude Code
 
 ```bash
-# Create a $5/month capped key and get instructions
-$ capit openrouter 5.00 --agent claude
-
-🔑 Generated limited key for openrouter ($5.00 cap)
-Key: sk-or-v1-...
-
-To use with Claude, run:
-  export OPENROUTER_API_KEY=sk-or-v1-...
-
-Or pipe to claude-code:
-  OPENROUTER_API_KEY=sk-or-v1-... claude
+# Create a $5/month capped key and install it
+$ capit openrouter 5.00 --agent claude -y
+$5.00 openrouter key installed into claude
 ```
+
+The key is automatically written to `~/.claude/.credentials.json`. Just run `claude` to start.
 
 Now Claude can only spend $5/month. Sleep soundly.
 
