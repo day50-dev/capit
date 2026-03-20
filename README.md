@@ -28,13 +28,13 @@ Traditional secrets management is overkill. You just want a **spending limit**.
 capit creates **limited API keys** with spending caps enforced by the provider:
 
 ```bash
-# Give Claude Code a $5/month cap
+# Give Claude Code a $5 cap
 capit openrouter 5.00 --agent claude
 
-# Give Cursor a $10/month cap  
+# Give Cursor a $10 cap  
 capit openrouter 10.00 --agent cursor
 
-# Give your custom agent a $1/month cap
+# Give your custom agent a $1 cap
 capit openrouter 1.00
 ```
 
@@ -49,7 +49,7 @@ pip install capit
 ### Issue a limited key
 
 ```bash
-# Basic: $1/month cap
+# Basic: $1 cap
 capit openrouter 1.00
 
 # Named key for organization
@@ -102,14 +102,14 @@ capit openrouter 5.00 --agent claude
 ### Example: Claude Code
 
 ```bash
-# Create a $5/month capped key and install it
+# Create a $5 capped key and install it
 $ capit openrouter 5.00 --agent claude -y
 $5.00 openrouter key installed into claude
 ```
 
 The key is automatically written to `~/.claude/.credentials.json`. Just run `claude` to start.
 
-Now Claude can only spend $5/month. Sleep soundly.
+Now Claude can only spend $5. Sleep soundly.
 
 ### Add your own consumer
 
@@ -200,7 +200,7 @@ capit --stores
 
 1. You run `capit openrouter 5.00`
 2. capit calls OpenRouter's Management API
-3. capit creates a **guardrail** with $5/month budget limit
+3. capit creates a **guardrail** with $5 budget limit
 4. capit creates an **API key** with that guardrail attached
 5. You get back a limited key: `sk-or-v1-...`
 
@@ -223,14 +223,14 @@ capit openrouter 5.00 --agent claude
 Creates keys with rate limits and usage caps. Perfect for API access control.
 
 ```bash
-# 100 credits/month + 10 requests/minute rate limit
+# 100 credits + 10 requests/minute rate limit
 capit unkey 100 --name my-api --prefix prod
 ```
 
 Unkey supports:
 - **Usage limits** - Cap total API calls (credits)
 - **Rate limits** - Requests per second/minute/hour
-- **Auto-refill** - Daily or monthly credit restoration
+- **Auto-refill** - Optional daily or monthly credit restoration
 - **Key expiration** - Temporary keys that auto-expire
 
 See [new-platform.md](new-platform.md) for adding more platforms.
