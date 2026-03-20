@@ -279,7 +279,6 @@ def handle_send_to(consumer, key, platform, spend_cap, confirm=True):
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation when configuring agent")
 @click.option("--interactive", "-i", is_flag=True, help="Prompt for master key if not found")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
-@click.version_option(version="0.2.0")
 @click.pass_context
 def main(ctx, platform, spend_cap, name, prefix, agent, yes, interactive, verbose):
     """capit - Cap spending on your AI agents.
@@ -293,14 +292,14 @@ Issue a limited key:
 
 \b
 Administration:
-  capit --keys list                 List all API keys
+  capit --keys list                 List all keys
   capit --keys list openrouter      List keys from provider
-  capit --keys disable <name>       Disable an API key by name
-  capit --keys enable <name>        Re-enable a disabled key by name
-  capit --keys delete <name>        Permanently delete an API key by name
+  capit --keys disable <pattern>    Disable key(s)
+  capit --keys enable <pattern>     Re-enable disabled key(s)
+  capit --keys delete <pattern>     Permanently delete key(s)
   capit --platforms                 List platforms
-  capit --platforms add openrouter  Add a master key
-  capit --platforms remove openrouter  Remove a master key
+  capit --platforms add <platform>  Add a master key
+  capit --platforms remove <platform>  Remove a master key
   capit --stores                    List available stores
   capit --consumers                 List available consumers
 """
@@ -442,10 +441,10 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("Usage: capit --keys <command> [args]")
         click.echo("")
         click.echo("Commands:")
-        click.echo("  list                     List all API keys from all providers")
-        click.echo("  list <provider>          List API keys from specific provider")
+        click.echo("  list                     List all keys from all providers")
+        click.echo("  list <provider>          List keys from specific provider")
         click.echo("  list <provider> <prefix> Filter keys by prefix")
-        click.echo("  disable <pattern>        Disable API key(s) by name pattern")
+        click.echo("  disable <pattern>        Disable key(s)")
         click.echo("  enable <pattern>         Re-enable disabled key(s)")
         click.echo("  delete <pattern>         Permanently delete key(s)")
         click.echo("")
@@ -564,10 +563,10 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("Usage: capit --keys <command> [args]")
         click.echo("")
         click.echo("Commands:")
-        click.echo("  list                     List all API keys from all providers")
-        click.echo("  list <provider>          List API keys from specific provider")
+        click.echo("  list                     List all keys from all providers")
+        click.echo("  list <provider>          List keys from specific provider")
         click.echo("  list <provider> <prefix> Filter keys by prefix")
-        click.echo("  disable <pattern>        Disable API key(s) by name pattern")
+        click.echo("  disable <pattern>        Disable key(s)")
         click.echo("  enable <pattern>         Re-enable disabled key(s)")
         click.echo("  delete <pattern>         Permanently delete key(s)")
         click.echo("")
@@ -800,9 +799,14 @@ def disable_cmd(platform):
 
 def cli():
     """Main entry point."""
-    # Check for --help/-h first - always show help
+    # Check for --help/-h/--version first - always handle these
     if len(sys.argv) > 1 and sys.argv[1] in ("--help", "-h"):
         main()
+        return
+
+    if len(sys.argv) > 1 and sys.argv[1] == "--version":
+        from importlib.metadata import version
+        click.echo(version("capit"))
         return
 
     # Check for -- prefixed admin commands and translate them
