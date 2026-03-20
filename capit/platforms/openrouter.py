@@ -42,14 +42,50 @@ def list_keys(master_key: str) -> list:
 
 
 def delete_key(master_key: str, key_id: str) -> bool:
-    """Delete/revoke an API key."""
+    """Delete/revoke an API key permanently."""
     headers = {
         "Authorization": f"Bearer {master_key}",
         "Content-Type": "application/json",
         "User-Agent": "capit/0.2.0"
     }
-    
+
     response = requests.delete(f"{API_BASE}/keys/{key_id}", headers=headers, timeout=30)
+    response.raise_for_status()
+    return True
+
+
+def disable_key(master_key: str, key_id: str) -> bool:
+    """Disable an API key (can be re-enabled later)."""
+    headers = {
+        "Authorization": f"Bearer {master_key}",
+        "Content-Type": "application/json",
+        "User-Agent": "capit/0.2.0"
+    }
+
+    response = requests.post(
+        f"{API_BASE}/keys/{key_id}/disable",
+        headers=headers,
+        json={"disabled": True},
+        timeout=30
+    )
+    response.raise_for_status()
+    return True
+
+
+def enable_key(master_key: str, key_id: str) -> bool:
+    """Enable a previously disabled API key."""
+    headers = {
+        "Authorization": f"Bearer {master_key}",
+        "Content-Type": "application/json",
+        "User-Agent": "capit/0.2.0"
+    }
+
+    response = requests.post(
+        f"{API_BASE}/keys/{key_id}/disable",
+        headers=headers,
+        json={"disabled": False},
+        timeout=30
+    )
     response.raise_for_status()
     return True
 
