@@ -292,16 +292,16 @@ Issue a limited key:
 
 \b
 Administration:
-  capit --keys list                 List all keys
-  capit --keys list openrouter      List keys from provider
-  capit --keys disable <pattern>    Disable key(s)
-  capit --keys enable <pattern>     Re-enable disabled key(s)
-  capit --keys delete <pattern>     Permanently delete key(s)
-  capit --platforms                 List platforms
-  capit --platforms add <platform>  Add a master key
-  capit --platforms remove <platform>  Remove a master key
-  capit --stores                    List available stores
-  capit --consumers                 List available consumers
+  capit --keys list               List all keys
+  capit --keys list openrouter    List keys from provider
+  capit --keys disable <pattern>  Disable key(s)
+  capit --keys enable <pattern>   Re-enable disabled key(s)
+  capit --keys delete <pattern>   Permanently delete key(s)
+  capit --platforms               List platforms
+  capit --platforms add           Add a master key
+  capit --platforms remove        Remove a master key
+  capit --stores                  List available stores
+  capit --consumers               List available consumers
 """
     # Check for help flag explicitly
     if '--help' in sys.argv or '-h' in sys.argv:
@@ -686,9 +686,9 @@ def platforms_cmd(subcommand, args):
             click.echo("Usage: capit --platforms <command> [args]")
             click.echo("")
             click.echo("Commands:")
-            click.echo("  list              List available platforms")
-            click.echo("  add <platform>    Add a master key for a platform")
-            click.echo("  remove <platform> Remove a master key (local only)")
+            click.echo("  list    List available platforms")
+            click.echo("  add     Add a master key")
+            click.echo("  remove  Remove a master key")
             click.echo("")
             click.echo("Platforms:")
             for platform in platforms:
