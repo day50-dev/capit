@@ -10,7 +10,7 @@ $ uvx capit openrouter 5.00 --agent openclaw
 $5.00 openrouter key installed into openclaw
 ```
 
-That's it. You now have an API key with a **$5/month spending cap** enforced by OpenRouter installed into openclaw's setting file. If it goes rogue, it can only spend $5.
+That's it. You now have an API key with a **$5/month spending cap** enforced by OpenRouter installed into openclaw's setting file. If it goes rogue, it can only cost you $5.
 
 ## The Problem
 
@@ -92,11 +92,12 @@ capit openrouter 5.00 --agent claude
 
 ### Built-in consumers
 
-| Consumer | Command |
-|----------|---------|
-| Claude / Claude Code | `capit openrouter 5.00 --agent claude` |
-| Cursor IDE | `capit openrouter 10.00 --agent cursor` |
-| Windsurf | `capit openrouter 5.00 --agent windsurf` |
+| Consumer | Command | Output |
+|----------|---------|--------|
+| Claude / Claude Code | `capit openrouter 5.00 --agent claude` | `$5.00 openrouter key installed into claude` |
+| Cursor IDE | `capit openrouter 10.00 --agent cursor` | `$10.00 openrouter key installed into cursor` |
+| Windsurf | `capit openrouter 5.00 --agent windsurf` | `$5.00 openrouter key installed into windsurf` |
+| OpenClaw | `capit openrouter 5.00 --agent openclaw` | `$5.00 openrouter key installed into openclaw` |
 
 ### Example: Claude Code
 
