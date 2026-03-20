@@ -358,35 +358,42 @@ def admin():
 @admin.command("keys")
 @click.argument("subcommand", required=False)
 @click.argument("args", nargs=-1)
-@click.option("-r", "--remote", is_flag=True, help="Remote operation (list/delete API keys)")
+@click.option("-p", "--provider", is_flag=True, help="List keys from provider (remote operation)")
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output")
-def keys_cmd(subcommand, args, remote, verbose):
+def keys_cmd(subcommand, args, provider, verbose):
     """Manage keys.
-    
+
     capit --keys list                    List master keys
-    capit --keys list -r openrouter      List API keys from platform
+    capit --keys list -p openrouter      List API keys from provider
+    capit --keys list -p openrouter capit-*   List keys matching prefix
     capit --keys delete openrouter <id>  Delete an API key
     capit --keys add openrouter          Add a master key
     capit --keys remove openrouter       Remove a master key
     """
+    import fnmatch
+
     if not subcommand:
         click.echo("Usage: capit --keys <command> [args]")
         click.echo("")
         click.echo("Commands:")
         click.echo("  list                List master keys")
-        click.echo("  list -r <platform>  List API keys from platform")
-        click.echo("  delete <platform> <key_id>  Delete an API key")
-        click.echo("  add <platform>      Add a master key")
-        click.echo("  remove <platform>   Remove a master key")
+        click.echo("  list -p <provider>  List API keys from provider")
+        click.echo("  list -p <provider> <prefix>  Filter by prefix")
+        click.echo("  delete <provider> <key_id>  Delete an API key")
+        click.echo("  add <provider>      Add a master key")
+        click.echo("  remove <provider>   Remove a master key")
         return
-    
+
     if subcommand == "list":
-        if remote:
+        if provider:
+            # Parse args: first arg is provider, optional second arg is prefix
             if not args:
-                click.echo("Error: Platform required for remote listing")
-                click.echo("Usage: capit --keys list -r <platform>")
+                click.echo("Error: Provider required for listing")
+                click.echo("Usage: capit --keys list -p <provider> [prefix]")
                 sys.exit(1)
             platform = args[0]
+            # Support prefix as positional arg
+            prefix = args[1] if len(args) > 1 else None
             ensure_capit_dir()
             lookup = load_master_lookup()
             if platform not in lookup:
@@ -396,9 +403,13 @@ def keys_cmd(subcommand, args, remote, verbose):
             master_key = store_module.retrieve_key(platform)
             platform_module = get_platform_module(platform)
             if not hasattr(platform_module, 'list_keys'):
-                click.echo(f"Platform '{platform}' doesn't support listing keys")
+                click.echo(f"Provider '{platform}' doesn't support listing keys")
                 sys.exit(1)
             keys = platform_module.list_keys(master_key)
+            # Filter by prefix if specified (glob-style matching)
+            if prefix:
+                filtered_keys = [k for k in keys if fnmatch.fnmatch(k.get("name", k.get("label", "")), prefix)]
+                keys = filtered_keys
             click.echo(f"Keys for {platform}:")
             for key in keys:
                 key_id = key.get("id", key.get("hash", "unknown"))
