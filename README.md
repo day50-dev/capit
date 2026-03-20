@@ -211,29 +211,32 @@ The spending cap is **enforced by OpenRouter**, not just locally tracked. The ke
 
 ## Platforms
 
-Platforms define how to create limited keys for a service:
+capit works with multiple platforms:
+
+### OpenRouter (LLM APIs)
+
+Creates keys with spending caps enforced by OpenRouter. Perfect for AI agents.
 
 ```bash
-capit --platforms
-# example
-# openrouter
+capit openrouter 5.00 --agent claude
 ```
 
-### Adding a platform
+### Unkey (Rate-limited API keys)
 
-See [new-platform.md](new-platform.md) for the full guide. Quick example:
+Creates keys with rate limits and usage caps. Perfect for API access control.
 
-```python
-# capit/platforms/anthropic.py
-PLATFORM_NAME = "anthropic"
-PLATFORM_URL = "https://anthropic.com"
-API_BASE = "https://api.anthropic.com/v1"
-
-def create_limited_key(master_key, spend_cap, salt, name=None, prefix=None):
-    # Call Anthropic API to create key with spending limit
-    # (similar to OpenRouter implementation)
-    ...
+```bash
+# 100 credits/month + 10 requests/minute rate limit
+capit unkey 100 --name my-api --prefix prod
 ```
+
+Unkey supports:
+- **Usage limits** - Cap total API calls (credits)
+- **Rate limits** - Requests per second/minute/hour
+- **Auto-refill** - Daily or monthly credit restoration
+- **Key expiration** - Temporary keys that auto-expire
+
+See [new-platform.md](new-platform.md) for adding more platforms.
 
 ## Storage
 
