@@ -1,27 +1,27 @@
-# capit Consumer Skill
+# capit Agent Creator Skill
 
-Add a new consumer to capit with this Claude agent skill.
+Add a new agent to capit with this Claude agent skill.
 
 ## Usage
 
-Ask Claude to add a consumer:
+Ask Claude to add an agent:
 
 ```
-Add a new consumer for my-agent that writes the API key to ~/.myagent/config.json
+Add a new agent for my-agent that writes the API key to ~/.myagent/config.json
 ```
 
 ## What This Skill Does
 
-This skill helps you create a new consumer for capit by:
+This skill helps you create a new agent for capit by:
 
-1. Creating the consumer Python file in `capit/consumers/`
+1. Creating the agent Python file in `capit/agents/`
 2. Implementing the `send()` function with your specified config path
-3. Updating the consumer list
+3. Updating the agent list
 
 ## Example Request
 
 ```
-Create a consumer for windsurf that writes to ~/.config/Windsurf/User/settings.json
+Create an agent for windsurf that writes to ~/.config/Windsurf/User/settings.json
 with the key stored as openrouter.apiKey
 ```
 
@@ -30,7 +30,7 @@ with the key stored as openrouter.apiKey
 The skill will create a file like:
 
 ```python
-"""Windsurf consumer for capit."""
+"""Windsurf agent for capit."""
 
 import json
 from pathlib import Path
@@ -41,7 +41,7 @@ def send(key: str, platform: str, spend_cap: str) -> str:
     """Configure API key in Windsurf."""
     settings_path = Path.home() / ".config" / "Windsurf" / "User" / "settings.json"
     settings_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     if settings_path.exists():
         try:
             with open(settings_path, "r") as f:
@@ -50,22 +50,22 @@ def send(key: str, platform: str, spend_cap: str) -> str:
             settings = {}
     else:
         settings = {}
-    
+
     settings["openrouter.apiKey"] = key
-    
+
     with open(settings_path, "w") as f:
         json.dump(settings, f, indent=2)
-    
+
     click.echo(f"${spend_cap} {platform} key installed into windsurf")
     return key
 ```
 
-## Consumer Template
+## Agent Template
 
-All consumers follow this pattern:
+All agents follow this pattern:
 
 ```python
-"""<Agent Name> consumer for capit."""
+"""<Agent Name> agent for capit."""
 
 import json  # or other config format
 from pathlib import Path
@@ -81,21 +81,21 @@ def send(key: str, platform: str, spend_cap: str) -> str:
     """Configure API key for this agent."""
     config_path = get_config_path()
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Load existing config or create new
     if config_path.exists():
         with open(config_path, "r") as f:
             config = json.load(f)
     else:
         config = {}
-    
+
     # Set the API key (customize the key name)
     config["api_key"] = key  # or config["openrouter.apiKey"] = key
-    
+
     # Write back
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
-    
+
     # Output in capit's standard format
     click.echo(f"${spend_cap} {platform} key installed into <agent>")
     return key
@@ -103,9 +103,9 @@ def send(key: str, platform: str, spend_cap: str) -> str:
 
 ## Testing
 
-After creating a consumer, test it:
+After creating an agent, test it:
 
 ```bash
-capit --consumers  # Verify it's listed
+capit --agents  # Verify it's listed
 capit openrouter 5.00 --agent <your-agent> -y  # Test it
 ```
