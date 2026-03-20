@@ -10,7 +10,7 @@ $ uvx capit openrouter 5.00 --agent openclaw
 $5.00 openrouter key installed into openclaw
 ```
 
-That's it. You now have an API key with a **$5/month spending cap** enforced by OpenRouter installed into openclaw's setting file. If it goes rogue, it can only cost you $5.
+That's it. You now have an API key with a **$5 spending cap** enforced by OpenRouter installed into openclaw's setting file. If it goes rogue, it can only cost you $5.
 
 ## The Problem
 
