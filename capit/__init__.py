@@ -4,7 +4,7 @@
 Usage:
     capit openrouter 1.00                    # Issue a limited key
     capit openrouter 1.00 --name prod        # With a name
-    capit openrouter 1.00 --send-to claude   # Send to consumer
+    capit openrouter 1.00 --send-to claude   # Send to agent
     capit --keys list                        # List master keys
     capit --keys remote openrouter           # List API keys from platform
     capit --platforms                        # List platforms
@@ -757,12 +757,12 @@ def stores_cmd():
 @admin.command("agents")
 def agents_cmd():
     """List all available agents."""
-    consumers = list_consumers()
-    if not consumers:
+    agents = list_agents()
+    if not agents:
         click.echo("No agents installed")
     else:
-        for consumer in consumers:
-            click.echo(consumer)
+        for agent in agents:
+            click.echo(agent)
 
 
 @admin.command("enable")
