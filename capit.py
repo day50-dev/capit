@@ -2,8 +2,8 @@
 """capit - Cap spending on your AI agents.
 
 Usage:
-    ./capit.py openrouter 1.00                    # Issue a limited key
-    ./capit.py openrouter 1.00 --agent claude    # Send to agent
+    ./capit.py openrouter 1.00                   # Issue a limited key
+    ./capit.py openrouter 1.00 --agent openclaw  # Send to agent
     ./capit.py --keys list -p openrouter         # List provider keys
     ./capit.py --help                            # Show help
 """

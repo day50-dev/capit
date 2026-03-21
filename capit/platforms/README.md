@@ -9,7 +9,7 @@ Platforms define how capit creates limited keys for different services.
 **Best for:** AI agents (Claude Code, Cursor, Windsurf, etc.)
 
 ```bash
-capit openrouter 5.00 --agent claude -y
+capit openrouter 5.00 --agent openclaw -y
 ```
 
 Creates API keys with USD spending caps enforced by OpenRouter. The key literally cannot spend more than the cap.

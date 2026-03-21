@@ -4,7 +4,7 @@
 Usage:
     capit openrouter 1.00                    # Issue a limited key
     capit openrouter 1.00 --name prod        # With a name
-    capit openrouter 1.00 --send-to claude   # Send to agent
+    capit openrouter 1.00 --agent openclaw   # Send to agent
     capit --keys list                        # List master keys
     capit --keys remote openrouter           # List API keys from platform
     capit --platforms                        # List platforms
@@ -352,7 +352,7 @@ def handle_send_to(agent, key, platform, spend_cap, confirm=True):
 @click.argument("spend_cap", required=False)
 @click.option("--name", "-n", help="Name for the created key")
 @click.option("--prefix", "-p", help="Prefix for key organization")
-@click.option("--agent", "-a", metavar="AGENT", help="Send key to AI agent (claude, cursor, windsurf)")
+@click.option("--agent", "-a", metavar="AGENT", help="Send key to AI agent (claude, cursor, windsurf, ...)")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation when configuring agent")
 @click.option("--interactive", "-i", is_flag=True, help="Prompt for master key if not found")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
@@ -364,7 +364,7 @@ def main(ctx, platform, spend_cap, name, prefix, agent, yes, interactive, verbos
 Issue a limited key:
   capit openrouter 1.00
   capit openrouter 5.00 --name prod
-  capit openrouter 1.00 --agent claude
+  capit openrouter 1.00 --agent openclaw
   capit openrouter 1.00 -i
 
 \b
