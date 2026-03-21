@@ -649,7 +649,7 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("  capit --keys delete 'openrouter/capit-*'")
         return
 
-    elif subcommand == "delete":
+    elif subcommand in ("delete", "remove"):
         if not args:
             click.echo("Usage: capit --keys delete <pattern>")
             sys.exit(1)
