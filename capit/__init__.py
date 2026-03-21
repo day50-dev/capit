@@ -271,10 +271,11 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to
             except Exception as e:
                 error_msg = str(e)
                 if "401" in error_msg or "Unauthorized" in error_msg:
+                    setup_url = getattr(platform_module, 'SETUP_URL', f"{platform_module.PLATFORM_URL}/settings")
                     logger.error(
                         "API authentication failed. Your management key may be invalid.\n"
-                        "Get a new key from: %s/settings/management-keys",
-                        platform_module.PLATFORM_URL
+                        "Get a new key from: %s",
+                        setup_url
                     )
                     sys.exit(1)
                 elif "403" in error_msg or "Forbidden" in error_msg:
@@ -306,10 +307,11 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to
         except Exception as e:
             error_msg = str(e)
             if "401" in error_msg or "Unauthorized" in error_msg:
+                setup_url = getattr(platform_module, 'SETUP_URL', f"{platform_module.PLATFORM_URL}/settings")
                 logger.error(
                     "API authentication failed. Your management key may be invalid.\n"
-                    "Get a new key from: %s/settings/management-keys",
-                    platform_module.PLATFORM_URL
+                    "Get a new key from: %s",
+                    setup_url
                 )
                 sys.exit(1)
             elif "403" in error_msg or "Forbidden" in error_msg:
