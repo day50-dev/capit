@@ -49,16 +49,6 @@ capit --agents  # List all supported agents
 
 See [agents/README.md](capit/agents/README.md) for the full list and adding custom agents.
 
-### First time?
-
-```bash
-capit openrouter 5.00 --agent claude -i
-```
-
-The `-i` flag prompts for your OpenRouter management key once. It's used to create the capped key.
-
----
-
 ## Platforms
 
 The included platforms are [openrouter](https://openrouter.ai) and [aihubmix](https://aihubmix.com).
