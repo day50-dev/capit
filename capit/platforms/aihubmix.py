@@ -9,6 +9,8 @@ import requests
 PLATFORM_NAME = "aihubmix"
 PLATFORM_URL = "https://aihubmix.com"
 API_BASE = "https://aihubmix.com/api"
+SETUP_URL = "https://console.aihubmix.com/setting"
+SETUP_INSTRUCTIONS = "You need an access key to create capped API keys"
 
 
 def validate_key(key: str) -> bool:

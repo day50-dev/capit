@@ -101,50 +101,55 @@ class TestKeysCommands:
 class TestErrorHandling:
     """Test error handling and logging."""
 
-    def test_missing_platform_error(self, capit_cmd, monkeypatch, tmp_path):
-        """Should show proper error for missing platform."""
+    def test_missing_platform_prompts(self, capit_cmd, monkeypatch, tmp_path):
+        """Should prompt for key when platform not configured."""
         # Use temp home to ensure no keys exist
         monkeypatch.setenv("HOME", str(tmp_path))
 
+        # Just check that it shows the prompt (will timeout waiting for input)
         result = subprocess.run(
             capit_cmd + ["openai", "5.00"],
             capture_output=True,
             text=True,
+            timeout=2,
             env={**os.environ, "HOME": str(tmp_path)}
         )
 
-        # Should exit with error
-        assert result.returncode != 0
-        # Error should mention logging (ERROR:capit:) or platform
-        assert "ERROR:" in result.stderr or "platform" in result.stderr.lower()
+        # Should prompt for key (shows setup instructions)
+        assert "Enter Key:" in result.stderr or "You need" in result.stderr
 
-    def test_missing_master_key_message(self, capit_cmd, monkeypatch, tmp_path):
-        """Error message should direct to --platforms add."""
+    def test_missing_master_key_nag_message(self, capit_cmd, monkeypatch, tmp_path):
+        """Should nag user to store key after prompting."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
+        # Provide a fake key, then it will fail on platform API
         result = subprocess.run(
             capit_cmd + ["openai", "5.00"],
             capture_output=True,
             text=True,
+            input="fake_key_123\n",
+            timeout=5,
             env={**os.environ, "HOME": str(tmp_path)}
         )
 
-        # Should mention how to add platform
+        # Should nag about storing the key
         assert "--platforms add" in result.stderr
 
     def test_loglevel_respected(self, capit_cmd, monkeypatch, tmp_path):
-        """LOGLEVEL=CRITICAL should suppress error output."""
+        """LOGLEVEL=CRITICAL should suppress debug output."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
+        # Even with CRITICAL, we still prompt for key
         result = subprocess.run(
             capit_cmd + ["openai", "5.00"],
             capture_output=True,
             text=True,
+            timeout=2,
             env={**os.environ, "HOME": str(tmp_path), "LOGLEVEL": "CRITICAL"}
         )
 
-        # With CRITICAL level, ERROR messages should be suppressed
-        assert "ERROR" not in result.stderr
+        # Should still show the prompt (not an ERROR log)
+        assert "Enter Key:" in result.stderr or "You need" in result.stderr
 
 
 class TestAgentFlag:

@@ -115,28 +115,69 @@ def list_stores():
     return list_modules(STORES_DIR)
 
 
-def get_master_key(platform, store_name=None, interactive=False):
-    """Get master key for a platform, optionally prompting interactively."""
-    lookup = load_master_lookup()
+def prompt_for_master_key(platform: str) -> str:
+    """Prompt user for a master key with platform-specific instructions.
     
+    Args:
+        platform: The platform name
+        
+    Returns:
+        The entered master key
+    """
+    # Try to get platform-specific setup info
+    platform_file = PLATFORMS_DIR / f"{platform}.py"
+    setup_url = None
+    setup_instructions = None
+    
+    if platform_file.exists():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(platform, platform_file)
+        platform_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(platform_module)
+        setup_url = getattr(platform_module, 'SETUP_URL', None)
+        setup_instructions = getattr(platform_module, 'SETUP_INSTRUCTIONS', None)
+    
+    if setup_url:
+        click.echo("", err=True)
+        if setup_instructions:
+            click.echo(f"  {setup_instructions}", err=True)
+        else:
+            click.echo("  You need a special key to create capped API keys", err=True)
+        click.echo("  Create one and find out more at the link below", err=True)
+        click.echo("", err=True)
+        click.echo(f"  {setup_url}", err=True)
+        click.echo("", err=True)
+        click.echo("―" * 60, err=True)
+        click.echo("", err=True)
+        return click.prompt("Enter Key", hide_input=True, err=True)
+    else:
+        click.echo("", err=True)
+        return click.prompt("Key", hide_input=True, err=True)
+
+
+def get_master_key(platform, store_name=None):
+    """Get master key for a platform, prompting if not stored.
+    
+    Returns:
+        Tuple of (master_key, store_name, was_stored)
+        - was_stored=True if key was found in storage
+        - was_stored=False if user was prompted (ephemeral)
+    """
+    lookup = load_master_lookup()
+
     if platform in lookup:
         store_name = store_name or lookup[platform].get("store", "dotenv")
         store_module = get_store_module(store_name)
         master_key = store_module.retrieve_key(platform)
         if master_key:
-            return master_key, store_name
-    
-    # Key not found - prompt interactively if allowed
-    if interactive:
-        click.echo(f"\nNo master key found for '{platform}'.", err=True)
-        click.echo("Enter your management API key (won't be stored):", err=True)
-        master_key = click.prompt("Key", hide_input=True)
-        return master_key, "ephemeral"
-    
-    return None, None
+            return master_key, store_name, True
+
+    # Key not found - prompt for it
+    master_key = prompt_for_master_key(platform)
+    return master_key, "ephemeral", False
 
 
-def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interactive=False, send_to=None, confirm=True):
+def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to=None, confirm=True):
     """Issue a limited key for a platform with a spending cap."""
     ensure_capit_dir()
 
@@ -144,19 +185,16 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
         logger.setLevel(logging.DEBUG)
         click.echo(f"Looking up platform: {platform}", err=True)
 
-    # Get master key (may prompt interactively)
-    master_key, store_name = get_master_key(platform, interactive=interactive)
+    # Get master key (prompts if not stored)
+    master_key, store_name, was_stored = get_master_key(platform)
 
-    if not master_key:
-        store_info = f" from store '{store_name}'" if store_name else ""
-        logger.error(
-            "No master key found for platform '%s'%s.\n"
-            "Add one with: capit --platforms add %s\n"
-            "Or run with --interactive to enter it once.",
-            platform, store_info, platform
-        )
-        sys.exit(1)
-    
+    # Nag user to store the key if they didn't have it stored
+    if not was_stored:
+        click.echo("", err=True)
+        click.echo(f"To store this key for future use, run:", err=True)
+        click.echo(f"  capit --platforms add {platform}", err=True)
+        click.echo("", err=True)
+
     if verbose:
         if store_name == "ephemeral":
             click.echo("Using ephemeral key (not stored)", err=True)
@@ -354,10 +392,9 @@ def handle_send_to(agent, key, platform, spend_cap, confirm=True):
 @click.option("--prefix", "-p", help="Prefix for key organization")
 @click.option("--agent", "-a", metavar="AGENT", help="Send key to AI agent (claude, cursor, windsurf, ...)")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation when configuring agent")
-@click.option("--interactive", "-i", is_flag=True, help="Prompt for master key if not found")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 @click.pass_context
-def main(ctx, platform, spend_cap, name, prefix, agent, yes, interactive, verbose):
+def main(ctx, platform, spend_cap, name, prefix, agent, yes, verbose):
     """capit - Cap spending on your AI agents.
 
 \b
@@ -365,7 +402,11 @@ Issue a limited key:
   capit openrouter 1.00
   capit openrouter 5.00 --name prod
   capit openrouter 1.00 --agent openclaw
-  capit openrouter 1.00 -i
+
+\b
+First time:
+  capit openrouter 1.00  # Prompts for management key
+  capit --platforms add openrouter  # Store it for next time
 
 \b
 Administration:
@@ -407,7 +448,6 @@ Capit is a DAY50 tool. day50.dev
             platform, spend_cap,
             name=name, prefix=prefix,
             verbose=verbose,
-            interactive=interactive,
             send_to=agent,
             confirm=not yes
         )
@@ -733,11 +773,12 @@ def platforms_cmd(subcommand, args):
             sys.exit(1)
         platform = args[0]
         ensure_capit_dir()
+
+        # Use shared prompt function for consistent UX
+        master_key = prompt_for_master_key(platform)
+
         stores = list_stores()
         default_store = "dotenv" if "dotenv" in stores else stores[0]
-        click.echo(f"Store: {default_store}")
-        click.echo("Add master key:")
-        master_key = click.prompt("Key", hide_input=True)
         store_module = get_store_module(default_store)
         store_module.store_key(platform, master_key)
         lookup = load_master_lookup()

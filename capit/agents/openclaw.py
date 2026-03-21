@@ -7,9 +7,6 @@ https://docs.openclaw.ai/
 
 import copy
 import json
-import os
-import subprocess
-import tempfile
 from pathlib import Path
 
 import click
@@ -114,40 +111,17 @@ class OpenclawAgent(Agent):
             }
         }
 
-        # Create temp files and show diff
-        secrets_temp_fd, secrets_temp_path = tempfile.mkstemp(prefix="capit-secrets-", suffix=".json")
-        config_temp_fd, config_temp_path = tempfile.mkstemp(prefix="capit-config-", suffix=".json")
-
-        try:
-            with os.fdopen(secrets_temp_fd, "w") as f:
-                json.dump(new_secrets, f, indent=2)
-                f.write("\n")
-
-            with os.fdopen(config_temp_fd, "w") as f:
-                json.dump(new_config, f, indent=2)
-                f.write("\n")
-
-            click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
-            click.echo("Changes:")
-
-            diff_tool = os.environ.get("DIFFTOOL", "diff")
-
-            # Show secrets diff
-            if old_secrets is not None:
-                _show_file_diff(old_secrets, secrets_temp_path, "secrets.json", diff_tool)
-
-            # Show config diff
-            if old_config is not None:
-                _show_file_diff(old_config, config_temp_path, "openclaw.json", diff_tool)
-
-            return click.confirm("Continue?", default=True, err=True)
-
-        finally:
-            for p in [secrets_temp_path, config_temp_path]:
-                try:
-                    Path(p).unlink()
-                except OSError:
-                    pass
+        # Use the base class multi-file diff
+        from capit.agents.base import show_multi_file_diff
+        return show_multi_file_diff(
+            files=[
+                (old_secrets, new_secrets, "secrets.json"),
+                (old_config, new_config, "openclaw.json")
+            ],
+            agent=agent,
+            platform=platform,
+            spend_cap=spend_cap
+        )
 
     def send(self, key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
         """Configure API key in OpenClaw."""
@@ -221,41 +195,6 @@ class OpenclawAgent(Agent):
             click.echo(f"Old configuration backed up to {backup_locations}")
 
         return key
-
-
-def _show_file_diff(old_data, new_path, label, diff_tool):
-    """Show diff for a single file."""
-    old_fd, old_path = tempfile.mkstemp(prefix=f"capit-old-{label}-", suffix=".json")
-    try:
-        with os.fdopen(old_fd, "w") as f:
-            json.dump(old_data, f, indent=2)
-            f.write("\n")
-
-        try:
-            if diff_tool == "diff":
-                result = subprocess.run(
-                    ["diff", "-u", old_path, new_path],
-                    capture_output=True,
-                    text=True
-                )
-                if result.returncode != 0:
-                    click.echo(f"{label}:\n{result.stdout}", err=True)
-            else:
-                click.echo(f"{label}:", err=True)
-                subprocess.run([diff_tool, old_path, new_path])
-        except FileNotFoundError:
-            result = subprocess.run(
-                ["diff", "-u", old_path, new_path],
-                capture_output=True,
-                text=True
-            )
-            if result.returncode != 0:
-                click.echo(f"{label}:\n{result.stdout}", err=True)
-    finally:
-        try:
-            Path(old_path).unlink()
-        except OSError:
-            pass
 
 
 # Module-level functions for backwards compatibility

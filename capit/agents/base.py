@@ -173,7 +173,8 @@ def show_json_diff(
                     json.dump(old_config, f, indent=2)
                     f.write("\n")
 
-                click.echo("Impacted changes:")
+                click.echo(click.style("Impacted Changes", bold=True), err=True)
+                click.echo("", err=True)
                 _display_diff(old_path, temp_path)
             finally:
                 try:
@@ -182,12 +183,15 @@ def show_json_diff(
                     pass
         else:
             # No existing config, show what will be created
-            click.echo("Impacted changes:")
+            click.echo(click.style("Impacted Changes", bold=True), err=True)
+            click.echo("", err=True)
             click.echo("New configuration:")
             with open(temp_path, "r") as f:
                 click.echo(f.read(), err=True)
 
         # Ask for confirmation
+        click.echo("", err=True)
+        click.echo("─" * 60, err=True)
         return click.confirm(
             f"Configure {agent} with a new {platform} key (limit: ${spend_cap})?",
             default=True,
@@ -199,6 +203,73 @@ def show_json_diff(
             Path(temp_path).unlink()
         except OSError:
             pass
+
+
+def show_multi_file_diff(
+    files: list,
+    agent: str,
+    platform: str,
+    spend_cap: str
+) -> bool:
+    """Show diffs for multiple config files and ask for confirmation.
+
+    Args:
+        files: List of (old_data, new_data, label) tuples
+        agent: Agent name for display
+        platform: Platform name for display
+        spend_cap: Spending cap for display
+
+    Returns:
+        True if user confirmed, False if aborted
+    """
+    click.echo(click.style("Impacted Changes", bold=True), err=True)
+    click.echo("", err=True)
+
+    for old_data, new_data, label in files:
+        if old_data is not None:
+            # Create temp files for diff
+            old_fd, old_path = tempfile.mkstemp(prefix=f"capit-old-{label}-", suffix=".json")
+            new_fd, new_path = tempfile.mkstemp(prefix=f"capit-new-{label}-", suffix=".json")
+            try:
+                with os.fdopen(old_fd, "w") as f:
+                    json.dump(old_data, f, indent=2)
+                    f.write("\n")
+                with os.fdopen(new_fd, "w") as f:
+                    json.dump(new_data, f, indent=2)
+                    f.write("\n")
+
+                click.echo(f"{label}:", err=True)
+                _display_diff(old_path, new_path)
+            finally:
+                try:
+                    Path(old_path).unlink()
+                    Path(new_path).unlink()
+                except OSError:
+                    pass
+        else:
+            # No old data, show new config
+            click.echo(f"{label} (new):", err=True)
+            temp_fd, temp_path = tempfile.mkstemp(prefix=f"capit-{label}-", suffix=".json")
+            try:
+                with os.fdopen(temp_fd, "w") as f:
+                    json.dump(new_data, f, indent=2)
+                    f.write("\n")
+                with open(temp_path, "r") as f:
+                    click.echo(f.read(), err=True)
+            finally:
+                try:
+                    Path(temp_path).unlink()
+                except OSError:
+                    pass
+
+    # Ask for confirmation
+    click.echo("", err=True)
+    click.echo("─" * 60, err=True)
+    return click.confirm(
+        f"Configure {agent} with a new {platform} key (limit: ${spend_cap})?",
+        default=True,
+        err=True
+    )
 
 
 def install_key(

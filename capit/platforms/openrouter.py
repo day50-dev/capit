@@ -10,6 +10,8 @@ import requests
 PLATFORM_NAME = "openrouter"
 PLATFORM_URL = "https://openrouter.ai"
 API_BASE = "https://openrouter.ai/api/v1"
+SETUP_URL = "https://openrouter.ai/settings/management-keys"
+SETUP_INSTRUCTIONS = "You need a special management key to create capped API keys"
 
 
 def validate_key(key: str) -> bool:
