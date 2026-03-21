@@ -503,8 +503,6 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("  list                     List all keys from all providers")
         click.echo("  list <provider>          List keys from specific provider")
         click.echo("  list <provider> <prefix> Filter keys by prefix")
-        click.echo("  disable <pattern>        Disable key(s)")
-        click.echo("  enable <pattern>         Re-enable disabled key(s)")
         click.echo("  delete <pattern>         Permanently delete key(s)")
         click.echo("")
         click.echo("Patterns:")
@@ -515,9 +513,9 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("Examples:")
         click.echo("  capit --keys list")
         click.echo("  capit --keys list openrouter")
-        click.echo("  capit --keys disable claude-71ad2519")
-        click.echo("  capit --keys disable 'capit-*'")
-        click.echo("  capit --keys disable 'openrouter/capit-*'")
+        click.echo("  capit --keys delete claude-71ad2519")
+        click.echo("  capit --keys delete 'capit-*'")
+        click.echo("  capit --keys delete 'openrouter/capit-*'")
         sys.exit(0)
 
     # If no subcommand, default to list all
@@ -643,8 +641,6 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("  list                     List all keys from all providers")
         click.echo("  list <provider>          List keys from specific provider")
         click.echo("  list <provider> <prefix> Filter keys by prefix")
-        click.echo("  disable <pattern>        Disable key(s)")
-        click.echo("  enable <pattern>         Re-enable disabled key(s)")
         click.echo("  delete <pattern>         Permanently delete key(s)")
         click.echo("")
         click.echo("Patterns:")
@@ -653,67 +649,9 @@ def keys_cmd(subcommand, args, verbose):
         click.echo("  name*             Glob pattern (e.g., 'capit-*')")
         click.echo("")
         click.echo("Examples:")
-        click.echo("  capit --keys disable claude-71ad2519")
-        click.echo("  capit --keys disable 'capit-*'")
-        click.echo("  capit --keys disable 'openrouter/capit-*'")
-        return
-
-    elif subcommand == "disable":
-        if not args:
-            click.echo("Usage: capit --keys disable <pattern>")
-            sys.exit(1)
-        pattern = args[0]
-        ensure_capit_dir()
-        lookup = load_master_lookup()
-        matches = _parse_key_pattern(pattern, lookup)
-        if not matches:
-            click.echo(f"No keys matching '{pattern}'")
-            sys.exit(1)
-        disabled_count = 0
-        for platform, key_id, key_data in matches:
-            key_name = key_data.get("name", key_data.get("label", ""))
-            store_module = get_store_module(lookup[platform]["store"])
-            master_key = store_module.retrieve_key(platform)
-            platform_module = get_platform_module(platform)
-            if not hasattr(platform_module, 'disable_key'):
-                click.echo(f"Provider '{platform}' doesn't support disabling keys")
-                continue
-            try:
-                platform_module.disable_key(master_key, key_id)
-                click.echo(f"Disabled: {platform}/{key_name}")
-                disabled_count += 1
-            except Exception as e:
-                click.echo(f"Error disabling {platform}/{key_name}: {e}")
-        click.echo(f"\nDisabled {disabled_count} key(s)")
-        return
-
-    elif subcommand == "enable":
-        if not args:
-            click.echo("Usage: capit --keys enable <pattern>")
-            sys.exit(1)
-        pattern = args[0]
-        ensure_capit_dir()
-        lookup = load_master_lookup()
-        matches = _parse_key_pattern(pattern, lookup)
-        if not matches:
-            click.echo(f"No keys matching '{pattern}'")
-            sys.exit(1)
-        enabled_count = 0
-        for platform, key_id, key_data in matches:
-            key_name = key_data.get("name", key_data.get("label", ""))
-            store_module = get_store_module(lookup[platform]["store"])
-            master_key = store_module.retrieve_key(platform)
-            platform_module = get_platform_module(platform)
-            if not hasattr(platform_module, 'enable_key'):
-                click.echo(f"Provider '{platform}' doesn't support enabling keys")
-                continue
-            try:
-                platform_module.enable_key(master_key, key_id)
-                click.echo(f"Enabled: {platform}/{key_name}")
-                enabled_count += 1
-            except Exception as e:
-                click.echo(f"Error enabling {platform}/{key_name}: {e}")
-        click.echo(f"\nEnabled {enabled_count} key(s)")
+        click.echo("  capit --keys delete claude-71ad2519")
+        click.echo("  capit --keys delete 'capit-*'")
+        click.echo("  capit --keys delete 'openrouter/capit-*'")
         return
 
     elif subcommand == "delete":
