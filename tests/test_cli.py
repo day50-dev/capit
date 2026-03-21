@@ -178,6 +178,10 @@ class TestAgentFlag:
         lookup_file.write_text(json.dumps({
             "openrouter": {"store": "dotenv", "added_at": "2024-01-01"}
         }))
+        
+        # Also need to create a fake dotenv store file
+        secrets_file = capit_dir / "secrets.txt"
+        secrets_file.write_text("openrouter=fake_key_for_testing")
 
         result = subprocess.run(
             capit_cmd + ["openrouter", "5.00", "--agent", "nonexistent_agent"],
