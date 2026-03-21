@@ -29,10 +29,10 @@ PLATFORMS_DIR = SCRIPT_DIR / "platforms"
 STORES_DIR = SCRIPT_DIR / "stores"
 MASTER_LOOKUP_FILE = CAPIT_DIR / "master-lookup"
 
-# Setup logging
+# Setup logging - respect LOGLEVEL environment variable
+log_level = os.getenv('LOGLEVEL', 'WARNING').upper()
 logging.basicConfig(
-    level=logging.WARNING,
-    format='%(levelname)s: %(message)s'
+    level=getattr(logging, log_level, logging.WARNING)
 )
 logger = logging.getLogger('capit')
 
@@ -149,11 +149,13 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
 
     if not master_key:
         store_info = f" from store '{store_name}'" if store_name else ""
-        raise click.ClickException(
-            f"No master key found for platform '{platform}'{store_info}.\n"
-            f"Add one with: capit --keys add {platform}\n"
-            f"Or run with --interactive to enter it once."
+        logger.error(
+            "No master key found for platform '%s'%s.\n"
+            "Add one with: capit --platforms add %s\n"
+            "Or run with --interactive to enter it once.",
+            platform, store_info, platform
         )
+        sys.exit(1)
     
     if verbose:
         if store_name == "ephemeral":
@@ -179,11 +181,12 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
             agent_module = get_agent_module(send_to)
             if not agent_module:
                 available = list_agents()
-                raise click.ClickException(
-                    f"Unknown agent '{send_to}'.\n"
-                    f"Supported agents: {', '.join(available) if available else 'none'}"
+                logger.error(
+                    "Unknown agent '%s'.\nSupported agents: %s",
+                    send_to, ', '.join(available) if available else 'none'
                 )
-            
+                sys.exit(1)
+
             if not hasattr(agent_module, 'show_diff'):
                 # Agent doesn't support diff, just ask
                 click.echo(f"\nConfigure {send_to} with a new {platform} key (spending limit: ${spend_cap})?", err=True)
@@ -195,35 +198,38 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
                 if not agent_module.show_diff(platform, spend_cap, send_to):
                     click.echo("Aborted.", err=True)
                     return None
-            
+
             # Now create the key after confirmation
             salt = secrets.token_hex(8)
             try:
                 limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, name=name, prefix=prefix)
                 if verbose:
                     click.echo(f"Key created successfully via API", err=True)
-                
+
                 # Install the key (no further confirmation needed)
                 return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=False)
             except Exception as e:
                 error_msg = str(e)
                 if "401" in error_msg or "Unauthorized" in error_msg:
-                    raise click.ClickException(
-                        f"API authentication failed. Your management key may be invalid.\n"
-                        f"Get a new key from: {platform_module.PLATFORM_URL}/settings/management-keys"
+                    logger.error(
+                        "API authentication failed. Your management key may be invalid.\n"
+                        "Get a new key from: %s/settings/management-keys",
+                        platform_module.PLATFORM_URL
                     )
+                    sys.exit(1)
                 elif "403" in error_msg or "Forbidden" in error_msg:
-                    raise click.ClickException(
-                        f"API access forbidden. Your management key lacks required permissions."
+                    logger.error(
+                        "API access forbidden. Your management key lacks required permissions."
                     )
+                    sys.exit(1)
                 elif "connection" in error_msg.lower() or "network" in error_msg.lower():
-                    raise click.ClickException(
-                        f"Network error: Could not connect to {platform_module.PLATFORM_URL}"
+                    logger.error(
+                        "Network error: Could not connect to %s", platform_module.PLATFORM_URL
                     )
+                    sys.exit(1)
                 else:
-                    raise click.ClickException(
-                        f"Failed to create limited key via API:\n{error_msg}"
-                    )
+                    logger.error("Failed to create limited key via API:\n%s", error_msg)
+                    sys.exit(1)
         
         # No agent or no confirmation needed - just create the key
         salt = secrets.token_hex(8)
@@ -240,22 +246,25 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
         except Exception as e:
             error_msg = str(e)
             if "401" in error_msg or "Unauthorized" in error_msg:
-                raise click.ClickException(
-                    f"API authentication failed. Your management key may be invalid.\n"
-                    f"Get a new key from: {platform_module.PLATFORM_URL}/settings/management-keys"
+                logger.error(
+                    "API authentication failed. Your management key may be invalid.\n"
+                    "Get a new key from: %s/settings/management-keys",
+                    platform_module.PLATFORM_URL
                 )
+                sys.exit(1)
             elif "403" in error_msg or "Forbidden" in error_msg:
-                raise click.ClickException(
-                    f"API access forbidden. Your management key lacks required permissions."
+                logger.error(
+                    "API access forbidden. Your management key lacks required permissions."
                 )
+                sys.exit(1)
             elif "connection" in error_msg.lower() or "network" in error_msg.lower():
-                raise click.ClickException(
-                    f"Network error: Could not connect to {platform_module.PLATFORM_URL}"
+                logger.error(
+                    "Network error: Could not connect to %s", platform_module.PLATFORM_URL
                 )
+                sys.exit(1)
             else:
-                raise click.ClickException(
-                    f"Failed to create limited key via API:\n{error_msg}"
-                )
+                logger.error("Failed to create limited key via API:\n%s", error_msg)
+                sys.exit(1)
 
     # Platform doesn't support online creation - use offline mode
     if verbose:
@@ -298,7 +307,7 @@ def get_agent_module(agent_name):
 
 def handle_send_to(agent, key, platform, spend_cap, confirm=True):
     """Send the generated key to an agent.
-    
+
     Args:
         agent: The agent name
         key: The generated limited API key
@@ -311,16 +320,19 @@ def handle_send_to(agent, key, platform, spend_cap, confirm=True):
 
     if not agent_module:
         available = list_agents()
-        raise click.ClickException(
-            f"Unknown agent '{agent}'.\n"
-            f"Supported agents: {', '.join(available) if available else 'none (add one to capit/agents/)'}"
+        logger.error(
+            "Unknown agent '%s'.\nSupported agents: %s",
+            agent, ', '.join(available) if available else 'none (add one to capit/agents/)'
         )
+        sys.exit(1)
 
     if not hasattr(agent_module, 'send'):
-        raise click.ClickException(
-            f"Agent '{agent}' is missing a 'send' function.\n"
-            f"See capit/agents/example.py for the required interface."
+        logger.error(
+            "Agent '%s' is missing a 'send' function.\n"
+            "See capit/agents/example.py for the required interface.",
+            agent
         )
+        sys.exit(1)
 
     # Agent module handles diff and final confirmation
     # If confirm=False, skip all prompts and just install
@@ -401,14 +413,11 @@ Capit is a DAY50 tool. day50.dev
         )
         if not agent:
             click.echo(key)
-    except click.ClickException as e:
-        click.echo(f"Error: {e.format_message()}", err=True)
-        sys.exit(1)
     except Exception as e:
         if verbose:
             import traceback
             traceback.print_exc()
-        click.echo(f"Error: {e}", err=True)
+        logger.error(str(e))
         sys.exit(1)
 
 
