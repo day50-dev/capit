@@ -17,7 +17,7 @@ That's it. Openclaw now has a capped API key. If it goes rogue, it can only cost
 ## Install
 
 ```bash
-uvx install capit
+uv tool install capit
 ```
 
 ## Usage
