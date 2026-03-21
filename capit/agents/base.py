@@ -238,8 +238,8 @@ def show_multi_file_diff(
                     json.dump(new_data, f, indent=2)
                     f.write("\n")
 
-                click.echo(f"{label}:", err=True)
                 _display_diff(old_path, new_path)
+                click.echo("", err=True)  # Space between file diffs
             finally:
                 try:
                     Path(old_path).unlink()
@@ -256,6 +256,7 @@ def show_multi_file_diff(
                     f.write("\n")
                 with open(temp_path, "r") as f:
                     click.echo(f.read(), err=True)
+                click.echo("", err=True)
             finally:
                 try:
                     Path(temp_path).unlink()
@@ -263,7 +264,6 @@ def show_multi_file_diff(
                     pass
 
     # Ask for confirmation
-    click.echo("", err=True)
     click.echo("─" * 60, err=True)
     return click.confirm(
         f"Configure {agent} with a new {platform} key (limit: ${spend_cap})?",
