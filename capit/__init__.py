@@ -269,7 +269,8 @@ def list_agents():
     agents = []
     if AGENTS_DIR.exists():
         for f in AGENTS_DIR.glob("*.py"):
-            if f.name != "__init__.py" and not f.name.endswith(".disabled"):
+            # Skip library modules and init files
+            if f.name != "__init__.py" and not f.name.endswith(".disabled") and f.name != "lib.py":
                 agents.append(f.stem)
     return agents
 

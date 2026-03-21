@@ -2,6 +2,8 @@
 
 This module provides helper functions for configuring API keys in various agents.
 Most agents just need to update a JSON config file with a new API key.
+
+This file should NOT be listed as an agent - it's a library module.
 """
 
 import copy
