@@ -1,4 +1,4 @@
-"""Tests for capit.agents.lib module."""
+"""Tests for capit.agents.base module."""
 
 import json
 import os
@@ -9,7 +9,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from capit.agents.lib import (
+from capit.agents.base import (
     create_backup,
     create_backups,
     show_json_diff,
@@ -17,6 +17,8 @@ from capit.agents.lib import (
     _set_nested_value,
     _get_nested_value,
     _display_diff,
+    Agent,
+    SimpleAgent,
 )
 
 
@@ -366,7 +368,7 @@ class TestSimpleAgentSend:
         """Should install key using simple_agent_send."""
         config_path = tmp_path / "config.json"
 
-        from capit.agents.lib import simple_agent_send
+        from capit.agents.base import simple_agent_send
 
         result = simple_agent_send(
             key="sk-test-key",
@@ -380,3 +382,83 @@ class TestSimpleAgentSend:
         assert result == "sk-test-key"
         config = json.loads(config_path.read_text())
         assert config == {"api_key": "sk-test-key"}
+
+
+class TestAgentClass:
+    """Tests for the Agent base class."""
+
+    def test_agent_is_abstract(self):
+        """Agent class should be abstract."""
+        with pytest.raises(TypeError):
+            Agent()
+
+    def test_simple_agent_implementation(self, tmp_path, capsys):
+        """SimpleAgent should work for basic configs."""
+        class TestAgent(SimpleAgent):
+            name = "testagent"
+            config_path = tmp_path / "config.json"
+            key_path = "api_key"
+
+        agent = TestAgent()
+
+        # Test send
+        result = agent.send("sk-test-key", "openrouter", "5.00", confirm=False)
+        assert result == "sk-test-key"
+        assert agent.get_config_path() == tmp_path / "config.json"
+        assert agent.get_key_path() == "api_key"
+
+        config = json.loads(agent.config_path.read_text())
+        assert config == {"api_key": "sk-test-key"}
+
+    def test_agent_custom_key_path(self, tmp_path, capsys):
+        """Agent should support custom key paths."""
+        class TestAgent(Agent):
+            name = "testagent"
+
+            def get_config_path(self) -> Path:
+                return tmp_path / "config.json"
+
+            def get_key_path(self, platform: str = None) -> str:
+                return f"{platform}.key"
+
+        agent = TestAgent()
+        result = agent.send("sk-test-key", "openrouter", "5.00", confirm=False)
+
+        assert result == "sk-test-key"
+        config = json.loads(agent.get_config_path().read_text())
+        assert config == {"openrouter": {"key": "sk-test-key"}}
+
+    def test_agent_prepare_config(self, tmp_path):
+        """Agent._prepare_config should handle nested paths."""
+        class TestAgent(Agent):
+            name = "testagent"
+
+            def get_config_path(self) -> Path:
+                return tmp_path / "config.json"
+
+            def get_key_path(self, platform: str = None) -> str:
+                return f"{platform}.key"
+
+        agent = TestAgent()
+        config = {}
+        result = agent._prepare_config(config, "test-key", "openrouter")
+
+        assert result["openrouter"]["key"] == "test-key"
+
+    def test_agent_custom_prepare_config(self, tmp_path, capsys):
+        """Agent should support custom _prepare_config."""
+        class CustomAgent(Agent):
+            name = "custom"
+
+            def get_config_path(self) -> Path:
+                return tmp_path / "config.json"
+
+            def _prepare_config(self, config: dict, key: str, platform: str) -> dict:
+                config[platform] = {"type": "api", "key": key}
+                return config
+
+        agent = CustomAgent()
+        agent.send("sk-test-key", "openrouter", "5.00", confirm=False)
+
+        config = json.loads(agent.get_config_path().read_text())
+        assert config == {"openrouter": {"type": "api", "key": "sk-test-key"}}

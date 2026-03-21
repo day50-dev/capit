@@ -66,8 +66,11 @@ class TestClaudeAgent:
     def test_send_creates_config(self, tmp_path):
         """send should create config file."""
         mock_path = tmp_path / ".credentials.json"
-        with patch.object(claude, 'get_credentials_path', return_value=mock_path):
-            claude.send("sk-test-key", "openrouter", "5.00", confirm=False)
+        # Create a new agent instance with mocked path
+        from capit.agents.claude import ClaudeAgent
+        agent = ClaudeAgent()
+        with patch.object(agent, 'get_config_path', return_value=mock_path):
+            agent.send("sk-test-key", "openrouter", "5.00", confirm=False)
 
         assert mock_path.exists()
         config = json.loads(mock_path.read_text())
@@ -127,8 +130,10 @@ class TestOpencodeAgent:
     def test_send_creates_provider(self, tmp_path):
         """send should create provider entry."""
         mock_path = tmp_path / "auth.json"
-        with patch.object(opencode, 'get_auth_path', return_value=mock_path):
-            opencode.send("sk-test-key", "openrouter", "5.00", confirm=False)
+        from capit.agents.opencode import OpencodeAgent
+        agent = OpencodeAgent()
+        with patch.object(agent, 'get_config_path', return_value=mock_path):
+            agent.send("sk-test-key", "openrouter", "5.00", confirm=False)
 
         assert mock_path.exists()
         auth = json.loads(mock_path.read_text())

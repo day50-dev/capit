@@ -462,3 +462,31 @@ class SimpleAgent(Agent):
     def get_config_path(self) -> Path:
         """Get the config file path."""
         return self.config_path
+
+
+def simple_agent_send(
+    key: str,
+    platform: str,
+    spend_cap: str,
+    agent: str,
+    config_path: Path,
+    key_path: str = "api_key",
+    mode: int = 0o600
+) -> str:
+    """Simple agent send function for basic JSON config updates.
+
+    This is for agents that just need to set a single key field.
+
+    Args:
+        key: The API key to install
+        platform: Platform name
+        spend_cap: Spending cap
+        agent: Agent name
+        config_path: Path to config file
+        key_path: Dot-notation path to key field
+        mode: File permissions
+
+    Returns:
+        The key value
+    """
+    return install_key(config_path, key_path, key, platform, agent, spend_cap, mode)

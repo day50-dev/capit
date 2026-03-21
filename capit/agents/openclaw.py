@@ -14,22 +14,7 @@ from pathlib import Path
 
 import click
 
-from capit.agents.lib import create_backups
-
-
-def get_config_dir() -> Path:
-    """Get the OpenClaw configuration directory."""
-    return Path.home() / ".openclaw"
-
-
-def get_secrets_path() -> Path:
-    """Get the path to OpenClaw secrets file."""
-    return get_config_dir() / "secrets.json"
-
-
-def get_config_path() -> Path:
-    """Get the path to OpenClaw main config file."""
-    return get_config_dir() / "openclaw.json"
+from capit.agents.base import Agent, create_backups
 
 
 def _get_provider_config(platform: str):
@@ -48,96 +33,194 @@ def _get_provider_config(platform: str):
     )
 
 
-def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
-    """Show diff of changes and ask for confirmation."""
-    config_dir = get_config_dir()
-    secrets_path = get_secrets_path()
-    config_path = get_config_path()
-    
-    config_dir.mkdir(parents=True, exist_ok=True)
-    provider_name, env_var = _get_provider_config(platform)
-    
-    # Load existing secrets
-    if secrets_path.exists():
-        try:
-            with open(secrets_path, "r") as f:
-                secrets = json.load(f)
-            old_secrets = copy.deepcopy(secrets)
-        except json.JSONDecodeError:
-            old_secrets = None
-    else:
-        old_secrets = None
-        secrets = {}
-    
-    # Prepare new secrets with placeholder
-    new_secrets = copy.deepcopy(secrets) if secrets else {}
-    if "providers" not in new_secrets:
-        new_secrets["providers"] = {}
-    new_secrets["providers"][provider_name] = {
-        "source": "env",
-        "value": "<new key>"
-    }
-    
-    # Load existing config
-    if config_path.exists():
-        try:
-            with open(config_path, "r") as f:
-                config = json.load(f)
-            old_config = copy.deepcopy(config)
-        except json.JSONDecodeError:
-            old_config = None
-    else:
-        old_config = None
-        config = {}
-    
-    # Prepare new config with placeholder
-    new_config = copy.deepcopy(config) if config else {}
-    if "models" not in new_config:
-        new_config["models"] = {}
-    if "providers" not in new_config["models"]:
-        new_config["models"]["providers"] = {}
-    new_config["models"]["providers"][provider_name] = {
-        "apiKey": {
-            "source": "env",
-            "provider": provider_name,
-            "id": env_var
-        }
-    }
-    
-    # Create temp files and show diff
-    secrets_temp_fd, secrets_temp_path = tempfile.mkstemp(prefix="capit-secrets-", suffix=".json")
-    config_temp_fd, config_temp_path = tempfile.mkstemp(prefix="capit-config-", suffix=".json")
-    
-    try:
-        with os.fdopen(secrets_temp_fd, "w") as f:
-            json.dump(new_secrets, f, indent=2)
-            f.write("\n")
-        
-        with os.fdopen(config_temp_fd, "w") as f:
-            json.dump(new_config, f, indent=2)
-            f.write("\n")
-        
-        click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
-        click.echo("Changes:")
-        
-        diff_tool = os.environ.get("DIFFTOOL", "diff")
-        
-        # Show secrets diff
-        if old_secrets is not None:
-            _show_file_diff(old_secrets, secrets_temp_path, "secrets.json", diff_tool)
-        
-        # Show config diff
-        if old_config is not None:
-            _show_file_diff(old_config, config_temp_path, "openclaw.json", diff_tool)
-        
-        return click.confirm("Continue?", default=True, err=True)
-        
-    finally:
-        for p in [secrets_temp_path, config_temp_path]:
+class OpenclawAgent(Agent):
+    """OpenClaw agent - manages two config files."""
+
+    name = "openclaw"
+
+    def get_config_path(self) -> Path:
+        """Get the main config file path."""
+        return Path.home() / ".openclaw" / "openclaw.json"
+
+    def get_secrets_path(self) -> Path:
+        """Get the secrets file path."""
+        return Path.home() / ".openclaw" / "secrets.json"
+
+    def get_config_dir(self) -> Path:
+        """Get the config directory."""
+        return Path.home() / ".openclaw"
+
+    def get_config_files(self) -> list:
+        """Get both config files for backup."""
+        return [
+            (self.get_secrets_path(), "secrets.json"),
+            (self.get_config_path(), "openclaw.json")
+        ]
+
+    def show_diff(self, platform: str, spend_cap: str, agent: str = None) -> bool:
+        """Show diff for both config files."""
+        agent = agent or self.name
+        config_dir = self.get_config_dir()
+        secrets_path = self.get_secrets_path()
+        config_path = self.get_config_path()
+
+        config_dir.mkdir(parents=True, exist_ok=True)
+        provider_name, env_var = _get_provider_config(platform)
+
+        # Load existing secrets
+        if secrets_path.exists():
             try:
-                Path(p).unlink()
-            except:
-                pass
+                with open(secrets_path, "r") as f:
+                    secrets = json.load(f)
+                old_secrets = copy.deepcopy(secrets)
+            except json.JSONDecodeError:
+                old_secrets = None
+        else:
+            old_secrets = None
+            secrets = {}
+
+        # Prepare new secrets with placeholder
+        new_secrets = copy.deepcopy(secrets) if secrets else {}
+        if "providers" not in new_secrets:
+            new_secrets["providers"] = {}
+        new_secrets["providers"][provider_name] = {
+            "source": "env",
+            "value": "<new key>"
+        }
+
+        # Load existing config
+        if config_path.exists():
+            try:
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+                old_config = copy.deepcopy(config)
+            except json.JSONDecodeError:
+                old_config = None
+        else:
+            old_config = None
+            config = {}
+
+        # Prepare new config with placeholder
+        new_config = copy.deepcopy(config) if config else {}
+        if "models" not in new_config:
+            new_config["models"] = {}
+        if "providers" not in new_config["models"]:
+            new_config["models"]["providers"] = {}
+        new_config["models"]["providers"][provider_name] = {
+            "apiKey": {
+                "source": "env",
+                "provider": provider_name,
+                "id": env_var
+            }
+        }
+
+        # Create temp files and show diff
+        secrets_temp_fd, secrets_temp_path = tempfile.mkstemp(prefix="capit-secrets-", suffix=".json")
+        config_temp_fd, config_temp_path = tempfile.mkstemp(prefix="capit-config-", suffix=".json")
+
+        try:
+            with os.fdopen(secrets_temp_fd, "w") as f:
+                json.dump(new_secrets, f, indent=2)
+                f.write("\n")
+
+            with os.fdopen(config_temp_fd, "w") as f:
+                json.dump(new_config, f, indent=2)
+                f.write("\n")
+
+            click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
+            click.echo("Changes:")
+
+            diff_tool = os.environ.get("DIFFTOOL", "diff")
+
+            # Show secrets diff
+            if old_secrets is not None:
+                _show_file_diff(old_secrets, secrets_temp_path, "secrets.json", diff_tool)
+
+            # Show config diff
+            if old_config is not None:
+                _show_file_diff(old_config, config_temp_path, "openclaw.json", diff_tool)
+
+            return click.confirm("Continue?", default=True, err=True)
+
+        finally:
+            for p in [secrets_temp_path, config_temp_path]:
+                try:
+                    Path(p).unlink()
+                except OSError:
+                    pass
+
+    def send(self, key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
+        """Configure API key in OpenClaw."""
+        config_dir = self.get_config_dir()
+        secrets_path = self.get_secrets_path()
+        config_path = self.get_config_path()
+        agent = self.name
+
+        config_dir.mkdir(parents=True, exist_ok=True)
+        provider_name, env_var = _get_provider_config(platform)
+
+        # Load or create secrets
+        if secrets_path.exists():
+            try:
+                with open(secrets_path, "r") as f:
+                    secrets = json.load(f)
+            except json.JSONDecodeError:
+                secrets = {}
+        else:
+            secrets = {}
+
+        # Load or create config
+        if config_path.exists():
+            try:
+                with open(config_path, "r") as f:
+                    config = json.load(f)
+            except json.JSONDecodeError:
+                config = {}
+        else:
+            config = {}
+
+        # Create backups
+        backup_paths = create_backups(self.get_config_files(), agent)
+
+        # Update secrets
+        if "providers" not in secrets:
+            secrets["providers"] = {}
+        secrets["providers"][provider_name] = {
+            "source": "env",
+            "value": key
+        }
+
+        # Update config
+        if "models" not in config:
+            config["models"] = {}
+        if "providers" not in config["models"]:
+            config["models"]["providers"] = {}
+        config["models"]["providers"][provider_name] = {
+            "apiKey": {
+                "source": "env",
+                "provider": provider_name,
+                "id": env_var
+            }
+        }
+
+        # Write secrets
+        with open(secrets_path, "w") as f:
+            json.dump(secrets, f, indent=2)
+            f.write("\n")
+        secrets_path.chmod(0o600)
+
+        # Write config
+        with open(config_path, "w") as f:
+            json.dump(config, f, indent=2)
+            f.write("\n")
+
+        click.echo(f"${spend_cap} {platform} key installed into {agent}")
+
+        if backup_paths:
+            backup_locations = ", ".join(str(p) for p in backup_paths.values())
+            click.echo(f"Old configuration backed up to {backup_locations}")
+
+        return key
 
 
 def _show_file_diff(old_data, new_path, label, diff_tool):
@@ -147,7 +230,7 @@ def _show_file_diff(old_data, new_path, label, diff_tool):
         with os.fdopen(old_fd, "w") as f:
             json.dump(old_data, f, indent=2)
             f.write("\n")
-        
+
         try:
             if diff_tool == "diff":
                 result = subprocess.run(
@@ -171,81 +254,14 @@ def _show_file_diff(old_data, new_path, label, diff_tool):
     finally:
         try:
             Path(old_path).unlink()
-        except:
+        except OSError:
             pass
 
 
-def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
-    """Configure API key in OpenClaw."""
-    config_dir = get_config_dir()
-    secrets_path = get_secrets_path()
-    config_path = get_config_path()
-    
-    config_dir.mkdir(parents=True, exist_ok=True)
-    provider_name, env_var = _get_provider_config(platform)
-    
-    # Load or create secrets
-    if secrets_path.exists():
-        try:
-            with open(secrets_path, "r") as f:
-                secrets = json.load(f)
-        except json.JSONDecodeError:
-            secrets = {}
-    else:
-        secrets = {}
-    
-    # Load or create config
-    if config_path.exists():
-        try:
-            with open(config_path, "r") as f:
-                config = json.load(f)
-        except json.JSONDecodeError:
-            config = {}
-    else:
-        config = {}
-
-    # Create backups
-    backup_paths = create_backups(
-        [(secrets_path, "secrets.json"), (config_path, "openclaw.json")],
-        "openclaw"
-    )
-    
-    # Update secrets
-    if "providers" not in secrets:
-        secrets["providers"] = {}
-    secrets["providers"][provider_name] = {
-        "source": "env",
-        "value": key
-    }
-    
-    # Update config
-    if "models" not in config:
-        config["models"] = {}
-    if "providers" not in config["models"]:
-        config["models"]["providers"] = {}
-    config["models"]["providers"][provider_name] = {
-        "apiKey": {
-            "source": "env",
-            "provider": provider_name,
-            "id": env_var
-        }
-    }
-    
-    # Write secrets
-    with open(secrets_path, "w") as f:
-        json.dump(secrets, f, indent=2)
-        f.write("\n")
-    secrets_path.chmod(0o600)
-    
-    # Write config
-    with open(config_path, "w") as f:
-        json.dump(config, f, indent=2)
-        f.write("\n")
-
-    click.echo(f"${spend_cap} {platform} key installed into openclaw")
-
-    if backup_paths:
-        backup_locations = ", ".join(str(p) for p in backup_paths.values())
-        click.echo(f"Old configuration backed up to {backup_locations}")
-
-    return key
+# Module-level functions for backwards compatibility
+_agent = OpenclawAgent()
+show_diff = _agent.show_diff
+send = _agent.send
+get_config_dir = _agent.get_config_dir
+get_secrets_path = _agent.get_secrets_path
+get_config_path = _agent.get_config_path
