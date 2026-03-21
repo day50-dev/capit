@@ -71,12 +71,14 @@ See [platforms/README.md](capit/platforms/README.md) for more details.
 ## Administration
 
 ```bash
-capit --keys list              # Your master keys
-capit --keys list openrouter   # Capped keys created on OpenRouter
-capit --keys delete openrouter <name>  # Delete a key
-capit --keys disable claude-*  # Disable keys matching pattern
-capit --platforms              # Available platforms
-capit --agents                 # Supported agents
+capit --keys list              # List all keys with spending info
+capit --keys list openrouter   # List keys from specific provider
+capit --keys delete <name>     # Delete a key (e.g., claude-71ad2519)
+capit --keys delete 'capit-*'  # Delete keys matching pattern
+capit --platforms              # List available platforms
+capit --platforms add          # Add a master key
+capit --platforms remove       # Remove a master key
+capit --agents                 # List supported agents
 ```
 
 ---
