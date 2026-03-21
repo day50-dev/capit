@@ -98,7 +98,7 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
 
     Args:
         master_key: Management API key
-        spend_cap: Spending cap (e.g., "5.00" for $5)
+        spend_cap: Spending cap (e.g., "5.00" for $5) or "unlimited" for no cap
         salt: Unique identifier for this key
         name: Optional name for the key
         prefix: Optional prefix for organization (defaults to "capit")
@@ -106,12 +106,6 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
     Returns:
         The created API key string (sk-...)
     """
-    # Convert spend cap to quota units (AIHubMix uses units where 1 = 1/500,000)
-    # For simplicity, we'll set a reasonable quota based on the dollar amount
-    # $1 ≈ 500,000 quota units (this is an approximation)
-    budget_limit = float(spend_cap)
-    quota_units = int(budget_limit * 500000)
-
     # Default prefix to "capit" if neither prefix nor name is specified
     if not prefix and not name:
         prefix = "capit"
@@ -131,16 +125,29 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
         "User-Agent": "capit/0.2.0"
     }
 
-    # Create key with quota limit
-    response = requests.post(
-        f"{API_BASE}/token/",
-        headers=headers,
-        json={
+    # Create key with or without quota limit
+    if spend_cap == "unlimited":
+        # Unlimited quota
+        payload = {
+            "name": key_name,
+            "unlimited_quota": True,
+            "expired_time": -1  # Never expires
+        }
+    else:
+        # Convert spend cap to quota units (AIHubMix uses units where 1 = 1/500,000)
+        budget_limit = float(spend_cap)
+        quota_units = int(budget_limit * 500000)
+        payload = {
             "name": key_name,
             "unlimited_quota": False,
             "remain_quota": quota_units,
             "expired_time": -1  # Never expires
-        },
+        }
+    
+    response = requests.post(
+        f"{API_BASE}/token/",
+        headers=headers,
+        json=payload,
         timeout=30
     )
     response.raise_for_status()

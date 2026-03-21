@@ -203,6 +203,10 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to
     """Issue a limited key for a platform with a spending cap."""
     ensure_capit_dir()
 
+    # Handle unlimited budget (0)
+    if spend_cap == "0":
+        spend_cap = "unlimited"
+
     if verbose:
         logger.setLevel(logging.DEBUG)
         click.echo(f"Looking up platform: {platform}", err=True)
@@ -336,7 +340,9 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to
     key_material = f"{master_key}:{platform}:{spend_cap}:{salt}"
     key_hash = hashlib.sha256(key_material.encode()).hexdigest()
     platform_prefix = "".join([c for c in platform if c.isalpha()])[:6]
-    limited_key = f"sk-{platform_prefix}-{spend_cap.replace('.', '')}-{key_hash[:12]}-{salt}"
+    # Handle unlimited in key format
+    key_limit = "unlimited" if spend_cap == "unlimited" else spend_cap.replace('.', '')
+    limited_key = f"sk-{platform_prefix}-{key_limit}-{key_hash[:12]}-{salt}"
 
     if verbose:
         click.echo(f"Generated offline key with format: sk-{platform_prefix}-...", err=True)
@@ -426,6 +432,7 @@ Issue a limited key:
   capit openrouter 1.00
   capit openrouter 5.00 --name prod
   capit openrouter 1.00 --agent openclaw
+  capit openrouter 0        # Unlimited budget
 
 \b
 Administration:
