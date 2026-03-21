@@ -8,6 +8,7 @@
 ```bash
 $ uvx capit openrouter 5.00 --agent openclaw
 $5.00 openrouter key installed into openclaw
+Old configuration backed up to /tmp/capit-openclaw-no22x7b1
 ```
 
 That's it. Openclaw now has a capped API key. If it goes rogue, it can only cost you $5.
