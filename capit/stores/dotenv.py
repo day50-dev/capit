@@ -5,6 +5,7 @@ Format: PLATFORM_NAME=KEY_VALUE
 """
 
 import os
+from typing import Optional
 from pathlib import Path
 
 SECRETS_FILE = Path.home() / ".local" / "capit" / "secrets.txt"
@@ -46,7 +47,7 @@ def store_key(platform: str, key: str):
     _save_secrets(secrets)
 
 
-def retrieve_key(platform: str) -> str | None:
+def retrieve_key(platform: str) -> Optional[str]:
     """Retrieve a master key for a platform."""
     secrets = _load_secrets()
     return secrets.get(platform)
