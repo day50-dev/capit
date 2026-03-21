@@ -46,11 +46,12 @@ class TestClaudeAgent:
         assert path.name == ".credentials.json"
         assert ".claude" in str(path)
 
-    def test_show_diff_signature(self, monkeypatch):
+    def test_show_diff_signature(self, tmp_path, monkeypatch):
         """show_diff should have correct signature."""
         monkeypatch.setattr("click.confirm", lambda *args, **kwargs: True)
         # Should not raise
-        with patch.object(claude, 'get_credentials_path'):
+        mock_path = tmp_path / ".credentials.json"
+        with patch.object(claude, 'get_credentials_path', return_value=mock_path):
             result = claude.show_diff("openrouter", "5.00", "claude")
             assert isinstance(result, bool)
 
@@ -76,16 +77,16 @@ class TestClaudeAgent:
 class TestCursorAgent:
     """Tests for Cursor agent."""
 
-    def test_get_config_path(self):
-        """Should return correct config path."""
-        path = cursor.get_config_path()
+    def test_get_settings_path(self):
+        """Should return correct settings path."""
+        path = cursor.get_settings_path()
         assert path.name == "settings.json"
         assert "Cursor" in str(path)
 
     def test_send_returns_key(self, tmp_path):
         """send should return the key."""
         mock_path = tmp_path / "settings.json"
-        with patch.object(cursor, 'get_config_path', return_value=mock_path):
+        with patch.object(cursor, 'get_settings_path', return_value=mock_path):
             result = cursor.send("sk-test-key", "openrouter", "5.00", confirm=False)
             assert result == "sk-test-key"
 
@@ -93,16 +94,16 @@ class TestCursorAgent:
 class TestWindsurfAgent:
     """Tests for Windsurf agent."""
 
-    def test_get_config_path(self):
-        """Should return correct config path."""
-        path = windsurf.get_config_path()
+    def test_get_settings_path(self):
+        """Should return correct settings path."""
+        path = windsurf.get_settings_path()
         assert path.name == "settings.json"
         assert "Windsurf" in str(path)
 
     def test_send_returns_key(self, tmp_path):
         """send should return the key."""
         mock_path = tmp_path / "settings.json"
-        with patch.object(windsurf, 'get_config_path', return_value=mock_path):
+        with patch.object(windsurf, 'get_settings_path', return_value=mock_path):
             result = windsurf.send("sk-test-key", "openrouter", "5.00", confirm=False)
             assert result == "sk-test-key"
 

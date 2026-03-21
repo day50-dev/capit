@@ -170,6 +170,15 @@ class TestAgentFlag:
         """--agent with unknown agent should error."""
         monkeypatch.setenv("HOME", str(tmp_path))
 
+        # First add a fake platform key so we get past the platform check
+        capit_dir = tmp_path / ".local" / "capit"
+        capit_dir.mkdir(parents=True)
+        lookup_file = capit_dir / "master-lookup"
+        import json
+        lookup_file.write_text(json.dumps({
+            "openrouter": {"store": "dotenv", "added_at": "2024-01-01"}
+        }))
+
         result = subprocess.run(
             capit_cmd + ["openrouter", "5.00", "--agent", "nonexistent_agent"],
             capture_output=True,

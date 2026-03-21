@@ -357,8 +357,10 @@ class TestDisplayDiff:
         _display_diff(str(file1), str(file2))
 
         captured = capsys.readouterr()
+        # Diff output goes to stderr (via click.echo with err=True)
+        output = captured.out + captured.err
         # Diff output should contain the changes
-        assert "old" in captured.out or "new" in captured.out
+        assert "old" in output or "new" in output
 
 
 class TestSimpleAgentSend:
