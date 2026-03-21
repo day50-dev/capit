@@ -20,22 +20,15 @@ Creates API keys with USD spending caps enforced by OpenRouter. The key literall
 - Works with 100+ LLM models
 - Auto-created guardrails
 
-### Unkey (API Access Control)
+### aihubmix (LLM APIs)
 
-**Best for:** Your own APIs, rate limiting, usage quotas
+**Best for:** AI agents with alternative pricing
 
 ```bash
-capit unkey 100 --name my-api --prefix prod
+capit aihubmix 5.00 --agent claude -y
 ```
 
-Creates API keys with rate limits and credit quotas.
-
-**Features:**
-- Rate limits (requests/second, minute, hour)
-- Credit quotas (total API calls)
-- Optional auto-refill (daily/monthly)
-- Temporary keys (auto-expire)
-- Shared limits across multiple keys
+Creates API keys with spending caps for aihubmix services.
 
 ## Adding Platforms
 
@@ -82,7 +75,7 @@ def create_limited_key(
     prefix: str = None
 ) -> str:
     """Create a limited key with spending/rate limits.
-    
+
     Returns the created API key string.
     """
     # Call platform API to create key with limits
@@ -96,6 +89,6 @@ def create_limited_key(
 capit --platforms
 # example
 # openrouter
-# unkey
+# aihubmix
 # myplatform
 ```

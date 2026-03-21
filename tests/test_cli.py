@@ -107,7 +107,7 @@ class TestErrorHandling:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = subprocess.run(
-            capit_cmd + ["unkey", "5.00"],
+            capit_cmd + ["openai", "5.00"],
             capture_output=True,
             text=True,
             env={**os.environ, "HOME": str(tmp_path)}
@@ -123,7 +123,7 @@ class TestErrorHandling:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = subprocess.run(
-            capit_cmd + ["unkey", "5.00"],
+            capit_cmd + ["openai", "5.00"],
             capture_output=True,
             text=True,
             env={**os.environ, "HOME": str(tmp_path)}
@@ -137,7 +137,7 @@ class TestErrorHandling:
         monkeypatch.setenv("HOME", str(tmp_path))
 
         result = subprocess.run(
-            capit_cmd + ["unkey", "5.00"],
+            capit_cmd + ["openai", "5.00"],
             capture_output=True,
             text=True,
             env={**os.environ, "HOME": str(tmp_path), "LOGLEVEL": "CRITICAL"}

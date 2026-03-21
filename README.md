@@ -61,7 +61,7 @@ The `-i` flag prompts for your OpenRouter management key once. It's used to crea
 
 ## Platforms
 
-The included platforms are [openrouter](https://openrouter.ai), [aihubmix](https://aihubmix.com), and [unkey](https://unkey.com).
+The included platforms are [openrouter](https://openrouter.ai) and [aihubmix](https://aihubmix.com).
 
 Platforms are easy to create with a claude skill located in `skills/platform-creator.md`.
 
