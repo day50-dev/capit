@@ -348,10 +348,8 @@ Issue a limited key:
 
 \b
 Administration:
-  capit --keys list               List all keys
-  capit --keys list openrouter    List keys from provider
-  capit --keys disable <pattern>  Disable key(s)
-  capit --keys enable <pattern>   Re-enable disabled key(s)
+  capit --keys list               List all keys with spending info
+  capit --keys list openrouter    List keys from specific provider
   capit --keys delete <pattern>   Permanently delete key(s)
   capit --platforms               List platforms
   capit --platforms add           Add a master key
