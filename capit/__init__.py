@@ -169,6 +169,8 @@ def prompt_for_master_key(platform: str) -> str:
         click.echo("", err=True)
         click.echo(f"  {setup_url}", err=True)
         click.echo("", err=True)
+        click.echo("  local-only. No capit servers. Nothing is sent to us.", err=True)
+        click.echo("", err=True)
         click.echo("―" * 60, err=True)
         click.echo("", err=True)
         return click.prompt("Enter Key", hide_input=True, err=True)
