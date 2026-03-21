@@ -13,8 +13,9 @@ Old configuration backed up to /tmp/capit-openclaw-no22x7b1
 
 That's it. Openclaw now has a capped API key. If it goes rogue, it can only cost you $5.
 
-**Everything is stored local-only or, optionally, not at all. 
-There are no capit servers and nothing is sent to us.**
+**Everything is stored local-only or, optionally, not at all.**
+
+**There are no capit servers and nothing is sent to us.**
 
 ---
 
