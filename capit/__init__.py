@@ -110,6 +110,28 @@ def list_platforms():
     return list_modules(PLATFORMS_DIR)
 
 
+def show_platforms(lookup=None, indent=0):
+    """Display platforms with their configuration status.
+    
+    Args:
+        lookup: Master key lookup dict (loaded if None)
+        indent: Number of spaces to indent each line (default 0)
+    """
+    if lookup is None:
+        lookup = load_master_lookup()
+    
+    platforms = list_platforms()
+    if not platforms:
+        click.echo("No platforms installed")
+        return
+    
+    click.echo(click.style("Platforms", bold=True), err=True)
+    prefix = " " * indent
+    for platform in platforms:
+        status = "✓ configured" if platform in lookup else "✗ not configured"
+        click.echo(f"{prefix}{platform:<20} {status}")
+
+
 def list_stores():
     """List all available stores."""
     return list_modules(STORES_DIR)
@@ -580,6 +602,8 @@ def keys_cmd(subcommand, args, verbose):
             lookup = load_master_lookup()
             if not lookup:
                 click.echo("No keys registered")
+                click.echo("")
+                show_platforms(lookup=lookup, indent=2)
             else:
                 all_keys = []
                 for platform, info in lookup.items():
@@ -732,6 +756,8 @@ def keys_cmd(subcommand, args, verbose):
 @click.argument("args", nargs=-1)
 def platforms_cmd(subcommand, args):
     """Manage platforms and master keys."""
+    lookup = load_master_lookup()
+    
     if subcommand is None:
         platforms = list_platforms()
         if not platforms:
@@ -744,22 +770,11 @@ def platforms_cmd(subcommand, args):
             click.echo("  add     Add a master key")
             click.echo("  remove  Remove a master key")
             click.echo("")
-            click.echo("Platforms:")
-            lookup = load_master_lookup()
-            for platform in platforms:
-                status = "✓ configured" if platform in lookup else "○ not configured"
-                click.echo(f"  {platform:<20} {status}")
+            show_platforms(lookup=lookup, indent=2)
         return
 
     if subcommand == "list":
-        platforms = list_platforms()
-        lookup = load_master_lookup()
-        if not platforms:
-            click.echo("No platforms installed")
-        else:
-            for platform in platforms:
-                status = "✓" if platform in lookup else "○"
-                click.echo(f"{platform:<20} {status}")
+        show_platforms(lookup=lookup, indent=0)
         return
 
     if subcommand == "add":
