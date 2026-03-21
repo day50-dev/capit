@@ -1,11 +1,11 @@
-"""Windsurf IDE consumer for capit.
+"""Windsurf IDE agent for capit.
 
 Automatically configures the API key in Windsurf's settings.
 """
 
-import json
-import click
 from pathlib import Path
+
+from capit.agents.lib import show_json_diff, install_key
 
 
 def get_settings_path() -> Path:
@@ -13,30 +13,25 @@ def get_settings_path() -> Path:
     return Path.home() / ".config" / "Windsurf" / "User" / "settings.json"
 
 
-def send(key: str, platform: str, spend_cap: str) -> str:
+def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
+    """Show diff of changes and ask for confirmation."""
+    return show_json_diff(
+        get_settings_path(),
+        "openrouter.apiKey",
+        "<new key>",
+        agent,
+        platform,
+        spend_cap
+    )
+
+
+def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
     """Send key to Windsurf by updating settings file."""
-    settings_path = get_settings_path()
-    
-    # Ensure directory exists
-    settings_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    # Load existing settings or create new
-    if settings_path.exists():
-        try:
-            with open(settings_path, "r") as f:
-                settings = json.load(f)
-        except json.JSONDecodeError:
-            settings = {}
-    else:
-        settings = {}
-    
-    # Update API key for OpenRouter
-    settings["openrouter.apiKey"] = key
-    
-    # Write back
-    with open(settings_path, "w") as f:
-        json.dump(settings, f, indent=2)
-    
-    click.echo(f"${spend_cap} {platform} key installed into windsurf")
-    
-    return key
+    return install_key(
+        get_settings_path(),
+        "openrouter.apiKey",
+        key,
+        platform,
+        "windsurf",
+        spend_cap
+    )

@@ -161,15 +161,68 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, interac
         if verbose:
             click.echo("Platform uses online key creation (API calls)", err=True)
 
+        # If sending to an agent, show diff FIRST, then create key after confirmation
+        if send_to and confirm:
+            # Get agent module to show diff
+            agent_module = get_agent_module(send_to)
+            if not agent_module:
+                available = list_agents()
+                raise click.ClickException(
+                    f"Unknown agent '{send_to}'.\n"
+                    f"Supported agents: {', '.join(available) if available else 'none'}"
+                )
+            
+            if not hasattr(agent_module, 'show_diff'):
+                # Agent doesn't support diff, just ask
+                click.echo(f"\nConfigure {send_to} with a new {platform} key (spending limit: ${spend_cap})?", err=True)
+                if not click.confirm("Continue?", default=True, err=True):
+                    click.echo("Aborted.", err=True)
+                    return None
+            else:
+                # Show diff with placeholder, ask for confirmation
+                if not agent_module.show_diff(platform, spend_cap, send_to):
+                    click.echo("Aborted.", err=True)
+                    return None
+            
+            # Now create the key after confirmation
+            salt = secrets.token_hex(8)
+            try:
+                limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, name=name, prefix=prefix)
+                if verbose:
+                    click.echo(f"Key created successfully via API", err=True)
+                
+                # Install the key (no further confirmation needed)
+                return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=False)
+            except Exception as e:
+                error_msg = str(e)
+                if "401" in error_msg or "Unauthorized" in error_msg:
+                    raise click.ClickException(
+                        f"API authentication failed. Your management key may be invalid.\n"
+                        f"Get a new key from: {platform_module.PLATFORM_URL}/settings/management-keys"
+                    )
+                elif "403" in error_msg or "Forbidden" in error_msg:
+                    raise click.ClickException(
+                        f"API access forbidden. Your management key lacks required permissions."
+                    )
+                elif "connection" in error_msg.lower() or "network" in error_msg.lower():
+                    raise click.ClickException(
+                        f"Network error: Could not connect to {platform_module.PLATFORM_URL}"
+                    )
+                else:
+                    raise click.ClickException(
+                        f"Failed to create limited key via API:\n{error_msg}"
+                    )
+        
+        # No agent or no confirmation needed - just create the key
         salt = secrets.token_hex(8)
         try:
             limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, name=name, prefix=prefix)
             if verbose:
                 click.echo(f"Key created successfully via API", err=True)
-            
-            # Handle send-to integration
+
+            # Handle send-to integration - skip confirmation since we already asked
             if send_to:
-                return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=confirm)
+                return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=False)
 
             return limited_key
         except Exception as e:
@@ -235,7 +288,15 @@ def get_agent_module(agent_name):
 
 
 def handle_send_to(agent, key, platform, spend_cap, confirm=True):
-    """Send the generated key to an agent."""
+    """Send the generated key to an agent.
+    
+    Args:
+        agent: The agent name
+        key: The generated limited API key
+        platform: The platform name
+        spend_cap: The spending cap
+        confirm: If False, skip diff and confirmation (key already confirmed)
+    """
     # Try to load agent module dynamically
     agent_module = get_agent_module(agent)
 
@@ -252,14 +313,9 @@ def handle_send_to(agent, key, platform, spend_cap, confirm=True):
             f"See capit/agents/example.py for the required interface."
         )
 
-    # Confirm before configuring agent
-    if confirm:
-        click.echo(f"\n⚠️  This will configure {agent} with the new limited key.", err=True)
-        if not click.confirm("Continue?", default=True, err=True):
-            click.echo("Aborted.", err=True)
-            return key
-
-    return agent_module.send(key, platform, spend_cap)
+    # Agent module handles diff and final confirmation
+    # If confirm=False, skip all prompts and just install
+    return agent_module.send(key, platform, spend_cap, confirm=confirm)
 
 
 # =============================================================================

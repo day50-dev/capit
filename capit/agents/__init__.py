@@ -1,1 +1,1 @@
-# Consumers directory
+# Agents directory
