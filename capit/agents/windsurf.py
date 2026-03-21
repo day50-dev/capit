@@ -5,33 +5,22 @@ Automatically configures the API key in Windsurf's settings.
 
 from pathlib import Path
 
-from capit.agents.lib import show_json_diff, install_key
+from capit.agents.base import SimpleAgent
 
 
-def get_settings_path() -> Path:
-    """Get the path to Windsurf settings file."""
-    return Path.home() / ".config" / "Windsurf" / "User" / "settings.json"
+class WindsurfAgent(SimpleAgent):
+    """Windsurf IDE agent."""
+
+    name = "windsurf"
+    key_path = "openrouter.apiKey"
+
+    def get_config_path(self) -> Path:
+        """Get the path to Windsurf settings file."""
+        return Path.home() / ".config" / "Windsurf" / "User" / "settings.json"
 
 
-def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
-    """Show diff of changes and ask for confirmation."""
-    return show_json_diff(
-        get_settings_path(),
-        "openrouter.apiKey",
-        "<new key>",
-        agent,
-        platform,
-        spend_cap
-    )
-
-
-def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
-    """Send key to Windsurf by updating settings file."""
-    return install_key(
-        get_settings_path(),
-        "openrouter.apiKey",
-        key,
-        platform,
-        "windsurf",
-        spend_cap
-    )
+# Module-level functions for backwards compatibility
+_agent = WindsurfAgent()
+show_diff = _agent.show_diff
+send = _agent.send
+get_settings_path = _agent.get_config_path

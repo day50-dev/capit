@@ -14,6 +14,8 @@ from pathlib import Path
 
 import click
 
+from capit.agents.lib import create_backups
+
 
 def get_config_dir() -> Path:
     """Get the OpenClaw configuration directory."""
@@ -201,17 +203,12 @@ def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
             config = {}
     else:
         config = {}
-    
+
     # Create backups
-    backup_dir = tempfile.mkdtemp(prefix="capit-")
-    backup_paths = []
-    
-    for src_path, name in [(secrets_path, "secrets.json"), (config_path, "openclaw.json")]:
-        if src_path.exists():
-            backup_file = Path(backup_dir) / name
-            import shutil
-            shutil.copy2(src_path, backup_file)
-            backup_paths.append(backup_file)
+    backup_paths = create_backups(
+        [(secrets_path, "secrets.json"), (config_path, "openclaw.json")],
+        "openclaw"
+    )
     
     # Update secrets
     if "providers" not in secrets:
@@ -244,10 +241,11 @@ def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
     with open(config_path, "w") as f:
         json.dump(config, f, indent=2)
         f.write("\n")
-    
+
     click.echo(f"${spend_cap} {platform} key installed into openclaw")
-    
+
     if backup_paths:
-        click.echo(f"Old configuration backed up to {backup_dir}")
-    
+        backup_locations = ", ".join(str(p) for p in backup_paths.values())
+        click.echo(f"Old configuration backed up to {backup_locations}")
+
     return key

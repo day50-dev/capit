@@ -9,11 +9,53 @@ This file should NOT be listed as an agent - it's a library module.
 import copy
 import json
 import os
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
 
 import click
+
+
+def create_backup(file_path: Path, agent: str) -> Path:
+    """Create a backup of a file before modification.
+
+    Args:
+        file_path: Path to the file to backup
+        agent: Agent name (used in backup directory prefix)
+
+    Returns:
+        Path to the backup file, or None if original doesn't exist
+    """
+    if not file_path.exists():
+        return None
+
+    backup_dir = tempfile.mkdtemp(prefix=f"capit-{agent}-")
+    backup_path = Path(backup_dir) / file_path.name
+    shutil.copy2(file_path, backup_path)
+    return backup_path
+
+
+def create_backups(files: list, agent: str) -> dict:
+    """Create backups of multiple files before modification.
+
+    Args:
+        files: List of (file_path, name) tuples
+        agent: Agent name (used in backup directory prefix)
+
+    Returns:
+        Dict mapping original paths to backup paths
+    """
+    backup_dir = tempfile.mkdtemp(prefix=f"capit-{agent}-")
+    backup_paths = {}
+
+    for file_path, name in files:
+        if file_path.exists():
+            backup_file = Path(backup_dir) / name
+            shutil.copy2(file_path, backup_file)
+            backup_paths[file_path] = backup_file
+
+    return backup_paths
 
 
 def show_json_diff(
@@ -178,7 +220,7 @@ def install_key(
     """
     # Ensure directory exists
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     # Load existing config
     if config_path.exists():
         try:
@@ -188,14 +230,9 @@ def install_key(
             config = {}
     else:
         config = {}
-    
+
     # Create backup
-    backup_path = None
-    if config_path.exists():
-        backup_dir = tempfile.mkdtemp(prefix="capit-")
-        backup_path = Path(backup_dir) / config_path.name
-        import shutil
-        shutil.copy2(config_path, backup_path)
+    backup_path = create_backup(config_path, agent)
     
     # Update key - handle nested paths
     keys = key_path.split(".")
