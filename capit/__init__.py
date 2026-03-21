@@ -12,6 +12,7 @@ Usage:
 
 import sys
 import os
+import signal
 import json
 import hashlib
 import secrets
@@ -28,6 +29,14 @@ SCRIPT_DIR = Path(__file__).parent
 PLATFORMS_DIR = SCRIPT_DIR / "platforms"
 STORES_DIR = SCRIPT_DIR / "stores"
 MASTER_LOOKUP_FILE = CAPIT_DIR / "master-lookup"
+
+# Handle Ctrl+C gracefully
+def handle_sigint(signum, frame):
+    click.echo("", err=True)
+    click.echo("User interrupted.", err=True)
+    sys.exit(130)
+
+signal.signal(signal.SIGINT, handle_sigint)
 
 # Setup logging - respect LOGLEVEL environment variable
 log_level = os.getenv('LOGLEVEL', 'WARNING').upper()
