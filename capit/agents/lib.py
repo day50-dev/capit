@@ -124,10 +124,16 @@ def _get_nested_value(data: dict, path: str, default=None):
 
 def _display_diff(old_path: str, new_path: str):
     """Display diff between two files."""
-    diff_tool = os.environ.get("DIFFTOOL", "diff")
+    diff_tool = os.environ.get("DIFFTOOL", "diff --color=auto")
 
     try:
-        if diff_tool == "diff":
+        if diff_tool == "diff --color=auto":
+            result = subprocess.run(
+                ["diff", "--color=auto", "-u", old_path, new_path],
+                capture_output=False,
+                text=True
+            )
+        elif diff_tool == "diff":
             result = subprocess.run(
                 ["diff", "-u", old_path, new_path],
                 capture_output=True,

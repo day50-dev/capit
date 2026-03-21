@@ -88,7 +88,8 @@ def list_platforms():
     platforms = []
     if PLATFORMS_DIR.exists():
         for f in PLATFORMS_DIR.glob("*.py"):
-            if f.name != "__init__.py" and not f.name.endswith(".disabled"):
+            # Skip internal files (starting with _), __init__.py, and .disabled files
+            if f.name != "__init__.py" and not f.name.startswith("_") and not f.name.endswith(".disabled"):
                 platforms.append(f.stem)
     return platforms
 
@@ -693,17 +694,21 @@ def platforms_cmd(subcommand, args):
             click.echo("  remove  Remove a master key")
             click.echo("")
             click.echo("Platforms:")
+            lookup = load_master_lookup()
             for platform in platforms:
-                click.echo(f"  {platform}")
+                status = "✓ configured" if platform in lookup else "○ not configured"
+                click.echo(f"  {platform:<20} {status}")
         return
 
     if subcommand == "list":
         platforms = list_platforms()
+        lookup = load_master_lookup()
         if not platforms:
             click.echo("No platforms installed")
         else:
             for platform in platforms:
-                click.echo(platform)
+                status = "✓" if platform in lookup else "○"
+                click.echo(f"{platform:<20} {status}")
         return
 
     if subcommand == "add":

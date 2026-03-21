@@ -55,8 +55,9 @@ def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
                 with os.fdopen(old_fd, "w") as f:
                     json.dump(old_auth, f, indent=2)
                     f.write("\n")
-                
-                _display_diff(old_path, temp_path, agent, platform, spend_cap)
+
+                click.echo("Impacted changes:")
+                _display_diff(old_path, temp_path)
             finally:
                 try:
                     Path(old_path).unlink()
@@ -64,13 +65,13 @@ def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
                     pass
         else:
             # No existing config, show what will be created
-            click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
+            click.echo("Impacted changes:")
             click.echo("New configuration:")
             with open(temp_path, "r") as f:
                 click.echo(f.read(), err=True)
-        
+
         # Ask for confirmation
-        return click.confirm("Continue?", default=True, err=True)
+        return click.confirm(f"Configure {agent} with a new {platform} key (limit: ${spend_cap})?", default=True, err=True)
         
     finally:
         try:
@@ -79,15 +80,18 @@ def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
             pass
 
 
-def _display_diff(old_path: str, new_path: str, agent: str, platform: str, spend_cap: str):
+def _display_diff(old_path: str, new_path: str):
     """Display diff between two files."""
-    diff_tool = os.environ.get("DIFFTOOL", "diff")
-    
-    click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
-    click.echo("Changes:")
-    
+    diff_tool = os.environ.get("DIFFTOOL", "diff --color=auto")
+
     try:
-        if diff_tool == "diff":
+        if diff_tool == "diff --color=auto":
+            result = subprocess.run(
+                ["diff", "--color=auto", "-u", old_path, new_path],
+                capture_output=False,
+                text=True
+            )
+        elif diff_tool == "diff":
             result = subprocess.run(
                 ["diff", "-u", old_path, new_path],
                 capture_output=True,
