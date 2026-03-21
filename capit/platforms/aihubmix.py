@@ -64,7 +64,7 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
         spend_cap: Spending cap (e.g., "5.00" for $5)
         salt: Unique identifier for this key
         name: Optional name for the key
-        prefix: Optional prefix for organization
+        prefix: Optional prefix for organization (defaults to "capit")
 
     Returns:
         The created API key string (sk-...)
@@ -74,6 +74,10 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
     # $1 ≈ 500,000 quota units (this is an approximation)
     budget_limit = float(spend_cap)
     quota_units = int(budget_limit * 500000)
+
+    # Default prefix to "capit" if neither prefix nor name is specified
+    if not prefix and not name:
+        prefix = "capit"
 
     # Build key name from prefix, name, and salt
     name_parts = []

@@ -553,8 +553,8 @@ def keys_cmd(subcommand, args, verbose):
                 # Sort by namespaced name
                 all_keys = sorted(all_keys, key=lambda k: k.get("_namespaced_name", "").lower())
                 # Print header with unicode box drawing
-                click.echo(f"{'NAME':<40} {'USED':>8} {'LIMIT':>10} {'CREATED':<12} {'STATUS':<10}")
-                click.echo("─" * 84)
+                click.echo(f"{'NAME':<40} {'USED':>8} {'LIMIT':>10} {'CREATED':<12}")
+                click.echo("─" * 72)
                 for key in all_keys:
                     key_name = key.get("_namespaced_name", "unknown")
                     limit_val = key.get("limit")
@@ -572,13 +572,7 @@ def keys_cmd(subcommand, args, verbose):
                         limit_str = "unlimited"
                         used_str = f"{usage_val:.2f}"
                     created = key.get("created_at", "")[:10] if key.get("created_at") else ""
-                    status = "disabled" if key.get("disabled") else "active"
-                    # Color status
-                    if status == "active":
-                        status_display = click.style(status, fg="green")
-                    else:
-                        status_display = click.style(status, fg="yellow")
-                    click.echo(f"{key_name:<40} {used_str:>8} {limit_str:>10} {created:<12} {status_display:<10}")
+                    click.echo(f"{key_name:<40} {used_str:>8} {limit_str:>10} {created:<12}")
                 click.echo(f"\nTotal: {len(all_keys)} key(s)")
         else:
             # List keys from specific provider
@@ -602,8 +596,8 @@ def keys_cmd(subcommand, args, verbose):
                 filtered_keys = [k for k in keys if fnmatch.fnmatch(k.get("name", k.get("label", "")), prefix)]
                 keys = filtered_keys
             # Print header with unicode box drawing
-            click.echo(f"{'NAME':<35} {'USED':>8} {'LIMIT':>10} {'CREATED':<12} {'STATUS':<10}")
-            click.echo("─" * 79)
+            click.echo(f"{'NAME':<35} {'USED':>8} {'LIMIT':>10} {'CREATED':<12}")
+            click.echo("─" * 67)
             # Sort by name for intuitive grouping
             keys = sorted(keys, key=lambda k: k.get("name", k.get("label", "")).lower())
             for key in keys:
@@ -623,13 +617,7 @@ def keys_cmd(subcommand, args, verbose):
                     limit_str = "unlimited"
                     used_str = f"{usage_val:.2f}"
                 created = key.get("created_at", "")[:10] if key.get("created_at") else ""
-                status = "disabled" if key.get("disabled") else "active"
-                # Color status
-                if status == "active":
-                    status_display = click.style(status, fg="green")
-                else:
-                    status_display = click.style(status, fg="yellow")
-                click.echo(f"{key_name:<35} {used_str:>8} {limit_str:>10} {created:<12} {status_display:<10}")
+                click.echo(f"{key_name:<35} {used_str:>8} {limit_str:>10} {created:<12}")
             click.echo(f"\nTotal: {len(keys)} key(s)")
         return
 

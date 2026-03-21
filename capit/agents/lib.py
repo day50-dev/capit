@@ -68,7 +68,7 @@ def show_json_diff(
         with os.fdopen(temp_fd, "w") as f:
             json.dump(new_config, f, indent=2)
             f.write("\n")
-        
+
         # Show diff if old config exists
         if old_config is not None:
             old_fd, old_path = tempfile.mkstemp(prefix="capit-current-", suffix=".json")
@@ -76,8 +76,9 @@ def show_json_diff(
                 with os.fdopen(old_fd, "w") as f:
                     json.dump(old_config, f, indent=2)
                     f.write("\n")
-                
-                _display_diff(old_path, temp_path, agent, platform, spend_cap)
+
+                click.echo("Impacted changes:")
+                _display_diff(old_path, temp_path)
             finally:
                 try:
                     Path(old_path).unlink()
@@ -85,13 +86,13 @@ def show_json_diff(
                     pass
         else:
             # No existing config, show what will be created
-            click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
+            click.echo("Impacted changes:")
             click.echo("New configuration:")
             with open(temp_path, "r") as f:
                 click.echo(f.read(), err=True)
-        
+
         # Ask for confirmation
-        return click.confirm("Continue?", default=True, err=True)
+        return click.confirm(f"Configure {agent} with a new {platform} key (limit: ${spend_cap})?", default=True, err=True)
         
     finally:
         try:
@@ -121,13 +122,10 @@ def _get_nested_value(data: dict, path: str, default=None):
     return data
 
 
-def _display_diff(old_path: str, new_path: str, agent: str, platform: str, spend_cap: str):
+def _display_diff(old_path: str, new_path: str):
     """Display diff between two files."""
     diff_tool = os.environ.get("DIFFTOOL", "diff")
-    
-    click.echo(f"\nConfigure {agent} with a new {platform} key (limit: ${spend_cap})?")
-    click.echo("Changes:")
-    
+
     try:
         if diff_tool == "diff":
             result = subprocess.run(

@@ -56,23 +56,27 @@ def delete_key(master_key: str, key_hash: str) -> bool:
 
 def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = None, prefix: str = None) -> str:
     """Create a limited key for OpenRouter with spending cap via API.
-    
+
     Calls OpenRouter's Management API to:
     1. Create a guardrail with the spending limit
     2. Create an API key with that guardrail assigned
-    
+
     Args:
         master_key: Management API key
         spend_cap: Spending cap (e.g., "1.00" for $1)
         salt: Unique identifier for this key
         name: Optional name for the key
-        prefix: Optional prefix for organization
-        
+        prefix: Optional prefix for organization (defaults to "capit")
+
     Returns:
         The created API key string (sk-or-v1-...)
     """
     budget_limit = float(spend_cap)
-    
+
+    # Default prefix to "capit" if neither prefix nor name is specified
+    if not prefix and not name:
+        prefix = "capit"
+
     # Build key name from prefix, name, and salt
     name_parts = []
     if prefix:
