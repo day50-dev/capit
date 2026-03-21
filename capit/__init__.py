@@ -33,7 +33,7 @@ MASTER_LOOKUP_FILE = CAPIT_DIR / "master-lookup"
 # Handle Ctrl+C gracefully
 def handle_sigint(signum, frame):
     click.echo("", err=True)
-    click.echo("User interrupted.", err=True)
+    logger.error("User interrupted.")
     sys.exit(130)
 
 signal.signal(signal.SIGINT, handle_sigint)
