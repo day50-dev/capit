@@ -55,45 +55,26 @@ See [skills/agent-creator.md](../skills/agent-creator.md) for details.
 
 ### Option 2: Manual
 
-#### Simple Agent (single key field)
+#### Simple Agent (recommended)
 
-For agents with a simple config like `{"api_key": "..."}`:
+For most agents, just inherit from `SimpleAgent`:
 
 ```python
 """MyAgent agent for capit."""
 
 from pathlib import Path
-from capit.agents.lib import show_json_diff, install_key
+from capit.agents.base import SimpleAgent
 
 
-def get_config_path() -> Path:
-    """Get the config file path for this agent."""
-    return Path.home() / ".myagent" / "config.json"
+class MyAgent(SimpleAgent):
+    """MyAgent integration."""
 
-
-def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
-    """Show diff of changes and ask for confirmation."""
-    return show_json_diff(
-        get_config_path(),
-        "api_key",
-        "<new key>",
-        agent,
-        platform,
-        spend_cap
-    )
-
-
-def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
-    """Send key to MyAgent by updating config file."""
-    return install_key(
-        get_config_path(),
-        "api_key",
-        key,
-        platform,
-        "myagent",
-        spend_cap
-    )
+    name = "myagent"
+    config_path = Path.home() / ".myagent" / "config.json"
+    key_path = "api_key"  # or "{platform}.key" for nested like "openrouter.key"
 ```
+
+That's it! The base class provides `show_diff()` and `send()` methods.
 
 #### Nested Key Agent
 
@@ -103,38 +84,49 @@ For agents with nested config like `{"openrouter": {"key": "..."}}`:
 """MyAgent agent for capit."""
 
 from pathlib import Path
-from capit.agents.lib import show_json_diff, install_key
+from capit.agents.base import SimpleAgent
 
 
-def get_config_path() -> Path:
-    return Path.home() / ".myagent" / "config.json"
+class MyAgent(SimpleAgent):
+    name = "myagent"
+    config_path = Path.home() / ".myagent" / "config.json"
+    key_path = "{platform}.key"  # Dynamic based on platform
 
-
-def show_diff(platform: str, spend_cap: str, agent: str) -> bool:
-    return show_json_diff(
-        get_config_path(),
-        f"{platform}.key",  # e.g., "openrouter.key"
-        "<new key>",
-        agent,
-        platform,
-        spend_cap
-    )
-
-
-def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
-    return install_key(
-        get_config_path(),
-        f"{platform}.key",
-        key,
-        platform,
-        "myagent",
-        spend_cap
-    )
+    def get_key_path(self, platform: str = None) -> str:
+        return f"{platform}.key"
 ```
 
 #### Complex Agent (multiple files)
 
-For agents that need to update multiple config files (like OpenClaw), see `capit/agents/openclaw.py` for a reference implementation.
+For agents that need to update multiple config files (like OpenClaw), inherit from `Agent` and override methods:
+
+```python
+"""MyAgent agent for capit."""
+
+from pathlib import Path
+from capit.agents.base import Agent, create_backups
+
+
+class MyAgent(Agent):
+    name = "myagent"
+
+    def get_config_path(self) -> Path:
+        return Path.home() / ".myagent" / "config.json"
+
+    def get_config_files(self) -> list:
+        """Return multiple files for backup."""
+        return [
+            (self.get_secrets_path(), "secrets.json"),
+            (self.get_config_path(), "config.json")
+        ]
+
+    def _prepare_config(self, config: dict, key: str, platform: str) -> dict:
+        """Custom config preparation logic."""
+        config[platform] = {"key": key}
+        return config
+```
+
+See `capit/agents/openclaw.py` for a full reference implementation.
 
 ## Agent Interface
 
@@ -168,38 +160,34 @@ def send(key: str, platform: str, spend_cap: str, confirm: bool = True) -> str:
 
 ## Library Functions
 
-The `capit.agents.lib` module provides helper functions:
+The `capit.agents.base` module provides helper functions and base classes:
+
+### `Agent` (base class)
+
+Abstract base class for all agents. Provides default implementations of `show_diff()` and `send()`.
+
+### `SimpleAgent` (base class)
+
+Convenience base class for simple JSON config agents. Just set class attributes:
+
+```python
+class MyAgent(SimpleAgent):
+    name = "myagent"
+    config_path = Path.home() / ".myagent" / "config.json"
+    key_path = "api_key"
+```
 
 ### `show_json_diff()`
 
 Shows a staged diff with `<new key>` placeholder and asks for confirmation.
 
-```python
-show_json_diff(
-    config_path=Path.home() / ".myagent" / "config.json",
-    key_path="api_key",  # or "openrouter.key" for nested
-    new_value="<new key>",
-    agent="myagent",
-    platform="openrouter",
-    spend_cap="5.00"
-)
-```
-
 ### `install_key()`
 
 Installs the key to a JSON config file with backup.
 
-```python
-install_key(
-    config_path=Path.home() / ".myagent" / "config.json",
-    key_path="api_key",
-    key_value="sk-or-v1-...",
-    platform="openrouter",
-    agent="myagent",
-    spend_cap="5.00",
-    mode=0o600  # file permissions
-)
-```
+### `create_backup()` / `create_backups()`
+
+Create backups of files before modification.
 
 ## Listing Agents
 
