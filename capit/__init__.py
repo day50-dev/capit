@@ -404,11 +404,6 @@ Issue a limited key:
   capit openrouter 1.00 --agent openclaw
 
 \b
-First time:
-  capit openrouter 1.00  # Prompts for management key
-  capit --platforms add openrouter  # Store it for next time
-
-\b
 Administration:
   capit --keys list               List all keys with spending info
   capit --keys list openrouter    List keys from specific provider
