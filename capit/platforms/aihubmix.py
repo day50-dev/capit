@@ -23,6 +23,8 @@ def get_key_format() -> str:
 
 def list_keys(master_key: str) -> list:
     """List all API keys for this platform."""
+    from datetime import datetime
+    
     headers = {
         "Authorization": f"Bearer {master_key}",
         "Content-Type": "application/json",
@@ -33,11 +35,44 @@ def list_keys(master_key: str) -> list:
     response.raise_for_status()
     data = response.json()
 
+    keys = []
     if isinstance(data, dict) and data.get("success"):
-        return data.get("data", [])
+        keys = data.get("data", [])
     elif isinstance(data, list):
-        return data
-    return []
+        keys = data
+    
+    # Convert created_time (UNIX timestamp) to created_at (ISO format) for consistency
+    for key in keys:
+        if key.get("created_time"):
+            try:
+                # Convert UNIX timestamp to ISO format
+                dt = datetime.fromtimestamp(key["created_time"])
+                key["created_at"] = dt.isoformat()
+            except (ValueError, TypeError):
+                key["created_at"] = ""
+        else:
+            key["created_at"] = ""
+        
+        # Map AIHubMix quota fields to standard fields
+        # used_quota / 500000 = actual usage
+        if key.get("used_quota") is not None:
+            key["usage"] = key["used_quota"] / 500000.0
+        else:
+            key["usage"] = 0
+        
+        # remain_quota: -1 = unlimited, otherwise quota remaining
+        if key.get("unlimited_quota"):
+            key["limit"] = None
+        elif key.get("remain_quota"):
+            # Convert remaining quota to limit (this is approximate)
+            key["limit"] = key["remain_quota"] / 500000.0
+        else:
+            key["limit"] = None
+        
+        # Map status (0=disabled, 1=enabled) to disabled boolean
+        key["disabled"] = key.get("status") == 0
+    
+    return keys
 
 
 def delete_key(master_key: str, token_id: int) -> bool:
