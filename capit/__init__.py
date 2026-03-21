@@ -83,25 +83,36 @@ def get_store_module(store_name):
     return module
 
 
+def list_modules(directory: Path) -> list:
+    """List all modules in a directory, filtering out internal files.
+    
+    Skips:
+    - __init__.py
+    - Files starting with _ (private/internal modules)
+    - Files ending with .disabled
+    
+    Args:
+        directory: Path to the directory to scan
+        
+    Returns:
+        List of module names (without .py extension)
+    """
+    modules = []
+    if directory.exists():
+        for f in directory.glob("*.py"):
+            if f.name != "__init__.py" and not f.name.startswith("_") and not f.name.endswith(".disabled"):
+                modules.append(f.stem)
+    return modules
+
+
 def list_platforms():
     """List all available platforms."""
-    platforms = []
-    if PLATFORMS_DIR.exists():
-        for f in PLATFORMS_DIR.glob("*.py"):
-            # Skip internal files (starting with _), __init__.py, and .disabled files
-            if f.name != "__init__.py" and not f.name.startswith("_") and not f.name.endswith(".disabled"):
-                platforms.append(f.stem)
-    return platforms
+    return list_modules(PLATFORMS_DIR)
 
 
 def list_stores():
     """List all available stores."""
-    stores = []
-    if STORES_DIR.exists():
-        for f in STORES_DIR.glob("*.py"):
-            if f.name != "__init__.py":
-                stores.append(f.stem)
-    return stores
+    return list_modules(STORES_DIR)
 
 
 def get_master_key(platform, store_name=None, interactive=False):
@@ -267,13 +278,9 @@ AGENTS_DIR = SCRIPT_DIR / "agents"
 
 def list_agents():
     """List all available agents."""
-    agents = []
-    if AGENTS_DIR.exists():
-        for f in AGENTS_DIR.glob("*.py"):
-            # Skip library modules and init files
-            if f.name != "__init__.py" and not f.name.endswith(".disabled") and f.name != "lib.py":
-                agents.append(f.stem)
-    return agents
+    # Get all modules, then filter out lib.py (shared library)
+    modules = list_modules(AGENTS_DIR)
+    return [m for m in modules if m != "lib"]
 
 
 def get_agent_module(agent_name):
