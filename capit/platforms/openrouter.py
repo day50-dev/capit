@@ -56,7 +56,7 @@ def delete_key(master_key: str, key_hash: str) -> bool:
     return True
 
 
-def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = None, prefix: str = None) -> str:
+def create_limited_key(master_key: str, spend_cap: str, salt: str, prefix: str = None) -> str:
     """Create a limited key for OpenRouter with spending cap via API.
 
     Calls OpenRouter's Management API to:
@@ -66,25 +66,18 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
     Args:
         master_key: Management API key
         spend_cap: Spending cap (e.g., "1.00" for $1) or "unlimited" for no cap
-        salt: Unique identifier for this key
-        name: Optional name for the key
+        salt: Unique identifier for this salt
         prefix: Optional prefix for organization (defaults to "capit")
 
     Returns:
         The created API key string (sk-or-v1-...)
     """
-    # Default prefix to "capit" if neither prefix nor name is specified
-    if not prefix and not name:
+    # Default prefix to "capit" if not specified
+    if not prefix:
         prefix = "capit"
 
-    # Build key name from prefix, name, and salt
-    name_parts = []
-    if prefix:
-        name_parts.append(prefix.rstrip('-'))
-    if name:
-        name_parts.append(name)
-    name_parts.append(salt[:8])
-    key_name = "-".join(name_parts)
+    # Build key name from prefix and salt
+    key_name = f"{prefix.rstrip('-')}-{salt[:8]}"
 
     headers = {
         "Authorization": f"Bearer {master_key}",

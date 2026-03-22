@@ -3,7 +3,7 @@
 
 Usage:
     capit openrouter 1.00                    # Issue a limited key
-    capit openrouter 1.00 --name prod        # With a name
+    capit openrouter 1.00 --prefix prod      # With a prefix
     capit openrouter 1.00 --agent openclaw   # Send to agent
     capit --keys list                        # List master keys
     capit --keys remote openrouter           # List API keys from platform
@@ -211,7 +211,7 @@ def get_master_key(platform, store_name=None):
     return master_key, "ephemeral", False
 
 
-def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to=None, confirm=True):
+def do_issue(platform, spend_cap, prefix=None, verbose=False, send_to=None, confirm=True):
     """Issue a limited key for a platform with a spending cap."""
     ensure_capit_dir()
 
@@ -278,7 +278,7 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to
             # Now create the key after confirmation
             salt = secrets.token_hex(8)
             try:
-                limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, name=name, prefix=prefix)
+                limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, prefix=prefix)
                 if verbose:
                     click.echo(f"Key created successfully via API", err=True)
 
@@ -311,7 +311,7 @@ def do_issue(platform, spend_cap, name=None, prefix=None, verbose=False, send_to
         # No agent or no confirmation needed - just create the key
         salt = secrets.token_hex(8)
         try:
-            limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, name=name, prefix=prefix)
+            limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, prefix=prefix)
             if verbose:
                 click.echo(f"Key created successfully via API", err=True)
 
@@ -430,19 +430,18 @@ def handle_send_to(agent, key, platform, spend_cap, confirm=True):
 ))
 @click.argument("platform", required=False)
 @click.argument("spend_cap", required=False)
-@click.option("--name", "-n", help="Name for the created key")
 @click.option("--prefix", "-p", help="Prefix for key organization")
 @click.option("--agent", "-a", metavar="AGENT", help="Send key to AI agent (claude, cursor, windsurf, ...)")
 @click.option("--yes", "-y", is_flag=True, help="Skip confirmation when configuring agent")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed progress")
 @click.pass_context
-def main(ctx, platform, spend_cap, name, prefix, agent, yes, verbose):
+def main(ctx, platform, spend_cap, prefix, agent, yes, verbose):
     """capit - Cap spending on your AI agents.
 
 \b
 Issue a limited key:
   capit openrouter 1.00
-  capit openrouter 5.00 --name prod
+  capit openrouter 5.00 --prefix prod
   capit openrouter 1.00 --agent openclaw
   capit openrouter 0        # Unlimited budget
 
@@ -484,7 +483,7 @@ Capit is a DAY50 tool. day50.dev
     try:
         key = do_issue(
             platform, spend_cap,
-            name=name, prefix=prefix,
+            prefix=prefix,
             verbose=verbose,
             send_to=agent,
             confirm=not yes

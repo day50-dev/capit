@@ -53,18 +53,12 @@ def create_limited_key(
     master_key: str,
     spend_cap: str,
     salt: str,
-    name: str = None,
     prefix: str = None
 ) -> str:
     """Create a rate-limited API key for Groq."""
-    # Build key name
-    name_parts = []
-    if prefix:
-        name_parts.append(prefix.rstrip('-'))
-    if name:
-        name_parts.append(name)
-    name_parts.append(salt[:8])
-    key_name = "-".join(name_parts)
+    # Build key name from prefix and salt
+    prefix = prefix or "capit"
+    key_name = f"{prefix.rstrip('-')}-{salt[:8]}"
     
     # Call Groq API to create key with rate limit
     headers = {"Authorization": f"Bearer {master_key}"}
@@ -108,29 +102,22 @@ def create_limited_key(
     master_key: str,
     spend_cap: str,
     salt: str,
-    name: str = None,
     prefix: str = None
 ) -> str:
     """Create a limited key with spending/rate limits.
-    
+
     Args:
         master_key: The master API key
         spend_cap: The spending cap (e.g., "5.00" for $5)
         salt: Random salt for uniqueness
-        name: Optional name for the key
         prefix: Optional prefix for organization
-        
+
     Returns:
         The created API key string
     """
-    # Build key name
-    name_parts = []
-    if prefix:
-        name_parts.append(prefix.rstrip('-'))
-    if name:
-        name_parts.append(name)
-    name_parts.append(salt[:8])
-    key_name = "-".join(name_parts)
+    # Build key name from prefix and salt
+    prefix = prefix or "capit"
+    key_name = f"{prefix.rstrip('-')}-{salt[:8]}"
     
     # Call platform API to create key with limits
     headers = {"Authorization": f"Bearer {master_key}"}
@@ -162,7 +149,7 @@ Calls the platform's API to create real limited keys:
 ```python
 API_BASE = "https://api.platform.com/v1"  # Required
 
-def create_limited_key(master_key, spend_cap, salt, name, prefix):
+def create_limited_key(master_key, spend_cap, salt, prefix):
     # Call API to create actual limited key
     response = requests.post(f"{API_BASE}/keys", ...)
     return response.json()["key"]
@@ -175,7 +162,7 @@ Generates deterministic keys locally (no API calls):
 ```python
 import hashlib
 
-def create_limited_key(master_key, spend_cap, salt, name, prefix):
+def create_limited_key(master_key, spend_cap, salt, prefix):
     key_material = f"{master_key}:{spend_cap}:{salt}"
     key_hash = hashlib.sha256(key_material.encode()).hexdigest()
     return f"sk-{key_hash[:12]}-{salt}"

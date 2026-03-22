@@ -90,7 +90,7 @@ def delete_key(master_key: str, token_id: int) -> bool:
     return True
 
 
-def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = None, prefix: str = None) -> str:
+def create_limited_key(master_key: str, spend_cap: str, salt: str, prefix: str = None) -> str:
     """Create a limited key for AIHubMix with spending cap via API.
 
     Calls AIHubMix's Management API to create a key with quota limit.
@@ -100,24 +100,17 @@ def create_limited_key(master_key: str, spend_cap: str, salt: str, name: str = N
         master_key: Management API key
         spend_cap: Spending cap (e.g., "5.00" for $5) or "unlimited" for no cap
         salt: Unique identifier for this key
-        name: Optional name for the key
         prefix: Optional prefix for organization (defaults to "capit")
 
     Returns:
         The created API key string (sk-...)
     """
-    # Default prefix to "capit" if neither prefix nor name is specified
-    if not prefix and not name:
+    # Default prefix to "capit" if not specified
+    if not prefix:
         prefix = "capit"
 
-    # Build key name from prefix, name, and salt
-    name_parts = []
-    if prefix:
-        name_parts.append(prefix.rstrip('-'))
-    if name:
-        name_parts.append(name)
-    name_parts.append(salt[:8])
-    key_name = "-".join(name_parts)
+    # Build key name from prefix and salt
+    key_name = f"{prefix.rstrip('-')}-{salt[:8]}"
 
     headers = {
         "Authorization": f"Bearer {master_key}",

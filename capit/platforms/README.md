@@ -71,13 +71,23 @@ def create_limited_key(
     master_key: str,
     spend_cap: str,
     salt: str,
-    name: str = None,
     prefix: str = None
 ) -> str:
     """Create a limited key with spending/rate limits.
 
-    Returns the created API key string.
+    Args:
+        master_key: The master API key
+        spend_cap: The spending cap (e.g., "5.00" for $5)
+        salt: Random salt for uniqueness
+        prefix: Optional prefix for organization (defaults to "capit")
+
+    Returns:
+        The created API key string
     """
+    # Build key name from prefix and salt
+    prefix = prefix or "capit"
+    key_name = f"{prefix.rstrip('-')}-{salt[:8]}"
+    
     # Call platform API to create key with limits
     ...
     return key
