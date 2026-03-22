@@ -3,6 +3,8 @@
 Automatically configures the API key in Opencode's auth file.
 """
 
+import copy
+import json
 from pathlib import Path
 
 from capit.agents.base import Agent, create_backup, show_multi_file_diff
