@@ -66,30 +66,25 @@ def save_master_lookup(lookup):
         json.dump(lookup, f, indent=2)
 
 
-def get_platform_module(platform_name):
-    """Dynamically load a platform module."""
-    platform_file = PLATFORMS_DIR / f"{platform_name}.py"
-    if not platform_file.exists():
-        raise click.ClickException(f"Platform '{platform_name}' not found")
-    
+def get_module(directory: Path, module_name: str):
+    """Dynamically load a module from a directory."""
+    module_file = directory / f"{module_name}.py"
+    if not module_file.exists():
+        raise click.ClickException(f"Module '{module_name}' not found")
+
     import importlib.util
-    spec = importlib.util.spec_from_file_location(platform_name, platform_file)
+    spec = importlib.util.spec_from_file_location(module_name, module_file)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def get_platform_module(platform_name):
+    return get_module(PLATFORMS_DIR, platform_name)
 
 
 def get_store_module(store_name):
-    """Dynamically load a store module."""
-    store_file = STORES_DIR / f"{store_name}.py"
-    if not store_file.exists():
-        raise click.ClickException(f"Store '{store_name}' not found")
-    
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(store_name, store_file)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return get_module(STORES_DIR, store_name)
 
 
 def list_modules(directory: Path) -> list:
@@ -278,71 +273,20 @@ def do_issue(platform, spend_cap, prefix=None, verbose=False, send_to=None, conf
             # Now create the key after confirmation
             salt = secrets.token_hex(8)
             try:
-                limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, prefix=prefix)
-                if verbose:
-                    click.echo(f"Key created successfully via API", err=True)
-
-                # Install the key (no further confirmation needed)
+                limited_key = _create_limited_key_with_handler(platform_module, master_key, spend_cap, salt, prefix=prefix, verbose=verbose)
                 return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=False)
             except Exception as e:
-                error_msg = str(e)
-                if "401" in error_msg or "Unauthorized" in error_msg:
-                    setup_url = getattr(platform_module, 'SETUP_URL', f"{platform_module.PLATFORM_URL}/settings")
-                    logger.error(
-                        "API authentication failed. Your management key may be invalid.\n"
-                        "Get a new key from: %s",
-                        setup_url
-                    )
-                    sys.exit(1)
-                elif "403" in error_msg or "Forbidden" in error_msg:
-                    logger.error(
-                        "API access forbidden. Your management key lacks required permissions."
-                    )
-                    sys.exit(1)
-                elif "connection" in error_msg.lower() or "network" in error_msg.lower():
-                    logger.error(
-                        "Network error: Could not connect to %s", platform_module.PLATFORM_URL
-                    )
-                    sys.exit(1)
-                else:
-                    logger.error("Failed to create limited key via API:\n%s", error_msg)
-                    sys.exit(1)
+                _handle_key_creation_error(e, platform_module)
         
         # No agent or no confirmation needed - just create the key
         salt = secrets.token_hex(8)
         try:
-            limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, prefix=prefix)
-            if verbose:
-                click.echo(f"Key created successfully via API", err=True)
-
-            # Handle send-to integration - skip confirmation since we already asked
+            limited_key = _create_limited_key_with_handler(platform_module, master_key, spend_cap, salt, prefix=prefix, verbose=verbose)
             if send_to:
                 return handle_send_to(send_to, limited_key, platform, spend_cap, confirm=False)
-
             return limited_key
         except Exception as e:
-            error_msg = str(e)
-            if "401" in error_msg or "Unauthorized" in error_msg:
-                setup_url = getattr(platform_module, 'SETUP_URL', f"{platform_module.PLATFORM_URL}/settings")
-                logger.error(
-                    "API authentication failed. Your management key may be invalid.\n"
-                    "Get a new key from: %s",
-                    setup_url
-                )
-                sys.exit(1)
-            elif "403" in error_msg or "Forbidden" in error_msg:
-                logger.error(
-                    "API access forbidden. Your management key lacks required permissions."
-                )
-                sys.exit(1)
-            elif "connection" in error_msg.lower() or "network" in error_msg.lower():
-                logger.error(
-                    "Network error: Could not connect to %s", platform_module.PLATFORM_URL
-                )
-                sys.exit(1)
-            else:
-                logger.error("Failed to create limited key via API:\n%s", error_msg)
-                sys.exit(1)
+            _handle_key_creation_error(e, platform_module)
 
     # Platform doesn't support online creation - use offline mode
     if verbose:
@@ -362,6 +306,38 @@ def do_issue(platform, spend_cap, prefix=None, verbose=False, send_to=None, conf
     return limited_key
 
 
+def _handle_key_creation_error(e, platform_module):
+    error_msg = str(e)
+    if "401" in error_msg or "Unauthorized" in error_msg:
+        setup_url = getattr(platform_module, 'SETUP_URL', f"{platform_module.PLATFORM_URL}/settings")
+        logger.error(
+            "API authentication failed. Your management key may be invalid.\n"
+            "Get a new key from: %s",
+            setup_url
+        )
+        sys.exit(1)
+    elif "403" in error_msg or "Forbidden" in error_msg:
+        logger.error(
+            "API access forbidden. Your management key lacks required permissions."
+        )
+        sys.exit(1)
+    elif "connection" in error_msg.lower() or "network" in error_msg.lower():
+        logger.error(
+            "Network error: Could not connect to %s", platform_module.PLATFORM_URL
+        )
+        sys.exit(1)
+    else:
+        logger.error("Failed to create limited key via API:\n%s", error_msg)
+        sys.exit(1)
+
+
+def _create_limited_key_with_handler(platform_module, master_key, spend_cap, salt, prefix=None, verbose=False):
+    limited_key = platform_module.create_limited_key(master_key, spend_cap, salt, prefix=prefix)
+    if verbose:
+        click.echo(f"Key created successfully via API", err=True)
+    return limited_key
+
+
 AGENTS_DIR = SCRIPT_DIR / "agents"
 
 
@@ -374,15 +350,7 @@ def list_agents():
 
 def get_agent_module(agent_name):
     """Dynamically load an agent module."""
-    agent_file = AGENTS_DIR / f"{agent_name}.py"
-    if not agent_file.exists():
-        return None
-
-    import importlib.util
-    spec = importlib.util.spec_from_file_location(agent_name, agent_file)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return get_module(AGENTS_DIR, agent_name)
 
 
 def handle_send_to(agent, key, platform, spend_cap, confirm=True):
