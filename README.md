@@ -5,6 +5,8 @@
 <br/><strong>Budget per-agent, per-provider, as little or as much as you want</strong>
 </p>
 
+**capit**, part of the [DAY50](https://day50.dev) suite of open-source tools for AI workflows, allows for managing application-based key management with cost capping.
+
 ```bash
 $ uvx capit openrouter 5.00 --agent openclaw
 $5.00 openrouter key installed into openclaw
