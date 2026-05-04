@@ -891,6 +891,16 @@ def disable_cmd(platform):
         sys.exit(1)
 
 
+@admin.command("serve")
+@click.option("--port", "-p", default=8080, help="Port to listen on")
+@click.option("--host", "-h", default="0.0.0.0", help="Host to bind to")
+def serve_cmd(port, host):
+    """Start the capit web server."""
+    from capit.server import create_server
+    click.echo(f"Starting capit web server on http://{host}:{port}")
+    create_server(port=port, host=host)
+
+
 def cli():
     """Main entry point."""
     # Check for --help/-h/--version first - always handle these
@@ -911,7 +921,7 @@ def cli():
             sys.argv[1] = arg[2:]  # Remove -- prefix
 
         # Check if it's an admin command
-        admin_commands = {"keys", "platforms", "stores", "agents", "enable", "disable"}
+        admin_commands = {"keys", "platforms", "stores", "agents", "enable", "disable", "serve"}
         if sys.argv[1] in admin_commands:
             admin()
             return
