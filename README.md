@@ -1,5 +1,5 @@
 <p align="center">
-<img width="500" height="187" alt="capit_500" src="https://github.com/user-attachments/assets/db22c959-ffee-4540-9108-2928e9c73f70" />
+<img width="500" alt="capit_500" src="https://github.com/user-attachments/assets/db22c959-ffee-4540-9108-2928e9c73f70" />
 <br/>
 <a href=https://pypi.org/project/capit><img src=https://badge.fury.io/py/capit.svg/></a>
 <br/><strong>Budget per-agent, per-provider, as little or as much as you want</strong>
@@ -10,6 +10,17 @@ Ever been sticker shocked with a high inference bill only to find that the agent
 You need to manage the spending independent of the broken tool and broken agent. 
 
 **capit**, part of the [DAY50](https://day50.dev) suite of open-source tools for AI workflows, allows for managing application-based key management with cost capping.
+
+## GUI
+
+```bash
+$ uvx capit serve
+```
+
+<img width="1167" height="934" alt="capit-ss" src="https://github.com/user-attachments/assets/bd0ba5b4-3a01-4b25-b488-7317ba694d86" />
+
+
+## TUI
 
 ```bash
 $ uvx capit openrouter 5.00 --agent openclaw
