@@ -186,9 +186,22 @@ def list_stores():
     return list_mods(Path(__file__).parent / "stores")
 
 
-def create_server(port=8080, host='0.0.0.0'):
-    """Start the capit web server."""
+def create_server(port=0, host='0.0.0.0'):
+    """Start the capit web server. Returns the actual port."""
+    # Port 0 means assign a random available port
+    if port == 0:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((host, 0))
+        port = s.getsockname()[1]
+        s.close()
+    
+    # Print URL before starting (since Flask blocks)
+    import sys
+    print(f"capit web server running on http://{host}:{port}", file=sys.stderr)
+    
     app.run(host=host, port=port, debug=False)
+    return port
 
 
 if __name__ == '__main__':

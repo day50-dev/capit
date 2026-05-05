@@ -860,12 +860,20 @@ def disable_cmd(platform):
 
 
 @admin.command("serve")
-@click.option("--port", "-p", default=8080, help="Port to listen on")
+@click.option("--port", "-p", default=0, help="Port to listen on (0 for random)")
 @click.option("--host", "-h", default="0.0.0.0", help="Host to bind to")
 def serve_cmd(port, host):
     """Start the capit web server."""
     from capit.server import create_server
-    click.echo(f"Starting capit web server on http://{host}:{port}")
+    # Port 0 means random available port
+    if port == 0:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.bind((host, 0))
+        port = s.getsockname()[1]
+        s.close()
+    
+    click.echo(f"capit web server running on http://{host}:{port}")
     create_server(port=port, host=host)
 
 

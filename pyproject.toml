@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "capit"
-version = "0.8.0"
+version = "0.8.1"
 description = "Issue authentication keys with spending caps"
 readme = "README.md"
 license = {text = "MIT"}
@@ -50,6 +50,9 @@ Repository = "https://github.com/capit/capit"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["capit", "capit.*"]
+
+[tool.setuptools.package-data]
+capit = ["templates/*.html", "static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
